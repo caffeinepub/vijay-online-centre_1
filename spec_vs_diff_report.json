@@ -1,0 +1,44 @@
+{
+  "kind": "spec_vs_diff_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-27T16:52:58.335Z",
+  "summary": "The diff implements most of the required features: admin auth reset (REQ-24), rejectApplication backend function (REQ-25), CONFIRM/REJECT buttons with document previews in admin (REQ-26), rejection message polling on customer PaymentPage (REQ-27), and confirm-first QR reveal logic with DONE button and receipt (REQ-28). However, several specific acceptance criteria have gaps, particularly around backend token validation and rejected state persistence via getApplicationById.",
+  "missing_requirements": [
+    {
+      "requirement": "After rejection, a customer polling getApplicationById for the rejected appId must receive a Rejected status with the message 'Your request was rejected by Vijay Ji. Please contact for details.' The application is deleted from the store but the rejection message must still be retrievable inline via getApplicationById.",
+      "reason": "The backend main.mo is truncated so it is unclear if getApplicationById checks the rejectionMessages map and returns a Rejected status with the message. The frontend PaymentPage uses a separate useGetRejectionMessage hook rather than getApplicationById returning rejection inline, which may not satisfy the AC requiring getApplicationById to indicate rejection.",
+      "evidence": [
+        "backend/main.mo",
+        "frontend/src/pages/PaymentPage.tsx",
+        "frontend/src/hooks/useQueries.ts"
+      ]
+    },
+    {
+      "id": "REQ-24",
+      "requirement": "All protected admin endpoints must succeed when called with the valid credential-based session token alone, with no Unauthorized errors after correct login.",
+      "reason": "The backend uses both ICP caller-based AccessControl.isAdmin checks AND the SESSION123 token check on functions like setApplicationFee. A browser user authenticating via vijay@123/vijay@123456 credentials but not registered as an ICP admin principal would still hit Unauthorized from the AccessControl.isAdmin check, contradicting REQ-24.",
+      "evidence": [
+        "backend/main.mo"
+      ]
+    }
+  ],
+  "hallucinated_features": [
+    {
+      "description": "A backend/migration.mo file was added implementing a versioned data migration module with a run() function to migrate actor state by adding the rejectionMessages map.",
+      "reason": "The build request did not request any migration module or versioned state migration infrastructure. It only asked for the rejectApplication function and rejection message storage. This is an unrequested architectural addition.",
+      "evidence": [
+        "backend/migration.mo"
+      ]
+    }
+  ],
+  "confidence": 0.72,
+  "changed_files": [
+    "backend/main.mo",
+    "backend/migration.mo",
+    "frontend-file-summaries.txt",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/AdminPage.tsx",
+    "frontend/src/pages/PaymentPage.tsx",
+    "project_state.json"
+  ]
+}

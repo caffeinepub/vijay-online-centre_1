@@ -1,0 +1,66 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "Fix Admin Login, Add Reject Flow, Confirm-First Payment Logic, and Document View",
+  "requirements": [
+    {
+      "id": "REQ-26",
+      "summary": "Add CONFIRM and REJECT buttons to Admin Dashboard Active Requests with document preview",
+      "acceptanceCriteria": [
+        "Each application row in the 'Active Requests' tab shows a green 'CONFIRM' button and a red 'REJECT' button.",
+        "Clicking 'REJECT' calls rejectApplication on the backend and removes the row from the list on success.",
+        "Clicking 'CONFIRM' reveals or activates the 'Set Fee (₹)' input and 'Set Price & Generate QR' button for that row.",
+        "Each application row clearly displays all uploaded documents as inline images or download links before the admin acts.",
+        "Document files (images) are rendered as visible thumbnails or previews; non-image files show a download link with the file name."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/AdminPage.tsx",
+          "operation": "modify",
+          "description": "Add CONFIRM and REJECT buttons to each application row in the 'Active Requests' tab (status: documentsUploaded). Wire REJECT button to call the rejectApplication backend function with adminToken, then refetch the query on success. Wire CONFIRM button to reveal the fee-setting UI for that row. Add inline document preview/download section for each application, rendering images as thumbnails using ExternalBlob.getDirectURL() and non-images as download links with file names. Ensure the blob-storage component's ExternalBlob class is used correctly. Verify the component's usage instructions before implementing."
+        }
+      ]
+    },
+    {
+      "id": "REQ-27",
+      "summary": "Show rejection message on customer PaymentPage when application is rejected",
+      "acceptanceCriteria": [
+        "When polling detects a 'Rejected' status, the waiting screen is replaced with the rejection message 'Your request was rejected by Vijay Ji. Please contact for details.'",
+        "No UPI QR code is shown after rejection.",
+        "Polling stops after the rejection state is detected.",
+        "The rejection message is clearly visible on both mobile and desktop layouts."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/PaymentPage.tsx",
+          "operation": "modify",
+          "description": "Update the polling logic in PaymentPage to detect when the backend returns a rejection status or message. Call getRejectionMessage(appId) if the application status indicates rejection. Replace the waiting spinner and any payment QR code with a clear rejection message: 'Your request was rejected by Vijay Ji. Please contact for details.' Stop polling once rejection is detected. Ensure the rejection message is responsive and clearly visible on both mobile and desktop."
+        }
+      ]
+    },
+    {
+      "id": "REQ-28",
+      "summary": "Enforce Confirm-First payment QR reveal logic and complete payment flow with receipt",
+      "acceptanceCriteria": [
+        "The UPI QR code is hidden on the customer's PaymentPage until the backend status is 'PriceSet'.",
+        "After admin clicks 'CONFIRM' and sets the fee, the customer's polled status becomes 'PriceSet' and the QR code appears.",
+        "After the customer clicks 'I Have Paid', the backend status is updated to 'PaymentPendingVerification' and the customer sees 'Payment Received. Waiting for Vijay Ji to verify...' with a spinner.",
+        "The admin's 'Payments to Verify' tab shows a 'DONE' button (not just 'CONFIRM / DONE') per row.",
+        "Clicking 'DONE' in the admin tab calls confirmPayment and moves the application to 'Completed'.",
+        "Once status is 'Completed', the customer's polling screen transitions to 'Payment Successful ✅' with a receipt showing Customer Name, Service Name, Amount Paid, and Application ID."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/PaymentPage.tsx",
+          "operation": "modify",
+          "description": "Hide the UPI QR code until the polled application status is 'priceSet'. Once status is 'priceSet', dynamically generate and display the UPI QR code using the format upi://pay?pa=8173064549@okicici&pn=VijayOnlineCentre&am={fee}&cu=INR. After the user clicks 'I Have Paid', call markPaymentPendingVerification to update the status to 'paymentPendingVerification' and display 'Payment Received. Waiting for Vijay Ji to verify...' with a spinner. Continue polling. When status becomes 'completed', replace the spinner with 'Payment Successful ✅' and a receipt summary card showing Customer Name, Service Name, Amount Paid (₹), and Application ID. Stop polling once status is 'completed'."
+        },
+        {
+          "path": "frontend/src/pages/AdminPage.tsx",
+          "operation": "modify",
+          "description": "In the 'Payments to Verify' tab (which lists applications in 'paymentPendingVerification' status), add a single 'DONE' button per row (not 'CONFIRM / DONE'). Wire the 'DONE' button to call confirmPayment(appId, adminToken) and refetch the query on success, removing the row from the Payments to Verify list."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "kind": "coverage_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-27T16:52:58.339Z",
+  "sources": {
+    "buildRequest": true,
+    "implementationPlan": true
+  },
+  "requirements": {
+    "total": 5,
+    "implemented": 3,
+    "items": [
+      {
+        "id": "REQ-24",
+        "summary": "Force-reset the admin authentication logic in the backend so that the ONLY valid credentials are username 'vijay@123' and password 'vijay@123456'. Remove or replace any existing credential-check code that may be causing 'Unauthorized' or 'Invalid' errors. The adminLogin function must return a valid session token on success and a clear error message on failure. All protected admin endpoints (setApplicationFee, confirmPayment, getApplicationsByStatus, updateApplicationStatus, etc.) must accept and validate this token correctly.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-25",
+        "summary": "Add a 'rejectApplication' backend function: rejectApplication(appId: Text, adminToken: Text) : async Bool. This function must validate the admin token, delete (or permanently remove) the application record from the data store, and set a rejection flag or store a rejection message ('Your request was rejected by Vijay Ji. Please contact for details.') retrievable by the customer's polling mechanism. If the application cannot be found or the token is invalid, return false.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-26",
+        "summary": "In the Admin Dashboard 'Active Requests' tab (which lists applications in 'DocumentsUploaded' status), display two action buttons per row: 'CONFIRM' and 'REJECT'. The 'CONFIRM' button transitions the application to 'AwaitingPrice' / allows the admin to set the fee and generates the UPI QR for the customer. The 'REJECT' button calls the rejectApplication backend function; after a successful call, the row is immediately removed from the admin list. The admin must be able to view all uploaded documents clearly (inline preview or download links) before deciding to CONFIRM or REJECT.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/AdminPage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/AdminPage.tsx"
+        ]
+      },
+      {
+        "id": "REQ-27",
+        "summary": "Update the customer-facing PaymentPage polling logic so that when the backend returns a 'Rejected' status for the polled application, the customer's waiting screen transitions to a clear rejection message: 'Your request was rejected by Vijay Ji. Please contact for details.' This message must replace the 'waiting for price' spinner and must not show any payment QR code.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/PaymentPage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/PaymentPage.tsx"
+        ]
+      },
+      {
+        "id": "REQ-28",
+        "summary": "Enforce the 'Confirm-First' payment QR reveal logic: the customer must NOT see the UPI payment QR code until the admin has explicitly clicked 'CONFIRM' (which sets the fee and transitions the application to 'PriceSet'). The customer's PaymentPage must poll for status 'PriceSet' before unlocking and displaying the dynamic UPI QR code (upi://pay?pa=8173064549@okicici&pn=VijayOnlineCentre&am={fee}&cu=INR). After the customer clicks 'I Have Paid', the status moves to 'PaymentPendingVerification'. The admin's 'Payments to Verify' tab then shows a 'DONE' button per row; clicking 'DONE' calls confirmPayment and transitions the application to 'Completed', at which point the customer's screen shows 'Payment Successful ✅' with a receipt summary.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/PaymentPage.tsx",
+          "frontend/src/pages/AdminPage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/PaymentPage.tsx",
+          "frontend/src/pages/AdminPage.tsx"
+        ]
+      }
+    ]
+  },
+  "changedFiles": [
+    "backend/main.mo",
+    "backend/migration.mo",
+    "build-request.json",
+    "feature_evidence.json",
+    "frontend-file-summaries.txt",
+    "frontend-implementation-plan.json",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/AdminPage.tsx",
+    "frontend/src/pages/PaymentPage.tsx",
+    "project_state.json",
+    "scratch/component-selection.json",
+    "spec.md",
+    "spec_vs_diff_report.json"
+  ]
+}

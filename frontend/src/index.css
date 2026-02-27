@@ -1,0 +1,208 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        --radius: 0.5rem;
+        /* Navy Blue theme */
+        --background: 0.97 0.005 240;
+        --foreground: 0.15 0.02 240;
+        --card: 1 0 0;
+        --card-foreground: 0.15 0.02 240;
+        --popover: 1 0 0;
+        --popover-foreground: 0.15 0.02 240;
+        --primary: 0.38 0.14 250;
+        --primary-foreground: 0.98 0 0;
+        --secondary: 0.93 0.01 240;
+        --secondary-foreground: 0.2 0.03 240;
+        --muted: 0.93 0.01 240;
+        --muted-foreground: 0.5 0.02 240;
+        --accent: 0.75 0.15 60;
+        --accent-foreground: 0.15 0.02 240;
+        --destructive: 0.577 0.245 27.325;
+        --destructive-foreground: 0.985 0 0;
+        --border: 0.88 0.01 240;
+        --input: 0.88 0.01 240;
+        --ring: 0.38 0.14 250;
+        --chart-1: 0.38 0.14 250;
+        --chart-2: 0.75 0.15 60;
+        --chart-3: 0.55 0.18 145;
+        --chart-4: 0.65 0.2 30;
+        --chart-5: 0.5 0.15 300;
+        --sidebar: 0.12 0.04 250;
+        --sidebar-foreground: 0.95 0.01 240;
+        --sidebar-primary: 0.55 0.18 250;
+        --sidebar-primary-foreground: 0.98 0 0;
+        --sidebar-accent: 0.2 0.05 250;
+        --sidebar-accent-foreground: 0.95 0.01 240;
+        --sidebar-border: 0.25 0.05 250;
+        --sidebar-ring: 0.55 0.18 250;
+
+        /* Custom tokens */
+        --navy: 0.12 0.06 250;
+        --navy-mid: 0.18 0.07 250;
+        --electric-blue: 0.45 0.18 250;
+        --gold: 0.75 0.15 60;
+        --gold-dark: 0.65 0.18 55;
+        --slate-dark: 0.2 0.04 240;
+        --success: 0.55 0.18 145;
+        --warning: 0.75 0.15 60;
+    }
+
+    .dark {
+        --background: 0.12 0.04 250;
+        --foreground: 0.95 0.01 240;
+        --card: 0.18 0.05 250;
+        --card-foreground: 0.95 0.01 240;
+        --popover: 0.2 0.05 250;
+        --popover-foreground: 0.95 0.01 240;
+        --primary: 0.55 0.18 250;
+        --primary-foreground: 0.98 0 0;
+        --secondary: 0.22 0.05 250;
+        --secondary-foreground: 0.95 0.01 240;
+        --muted: 0.22 0.05 250;
+        --muted-foreground: 0.65 0.03 240;
+        --accent: 0.75 0.15 60;
+        --accent-foreground: 0.12 0.04 250;
+        --destructive: 0.704 0.191 22.216;
+        --destructive-foreground: 0.205 0 0;
+        --border: 1 0 0 / 12%;
+        --input: 1 0 0 / 15%;
+        --ring: 0.55 0.18 250;
+        --chart-1: 0.55 0.18 250;
+        --chart-2: 0.75 0.15 60;
+        --chart-3: 0.55 0.18 145;
+        --chart-4: 0.65 0.2 30;
+        --chart-5: 0.5 0.15 300;
+        --sidebar: 0.1 0.04 250;
+        --sidebar-foreground: 0.95 0.01 240;
+        --sidebar-primary: 0.55 0.18 250;
+        --sidebar-primary-foreground: 0.98 0 0;
+        --sidebar-accent: 0.18 0.05 250;
+        --sidebar-accent-foreground: 0.95 0.01 240;
+        --sidebar-border: 1 0 0 / 12%;
+        --sidebar-ring: 0.55 0.18 250;
+    }
+
+    * {
+        @apply border-border;
+    }
+
+    body {
+        @apply bg-background text-foreground font-sans;
+        font-family: 'Inter', system-ui, sans-serif;
+    }
+
+    h1, h2, h3 {
+        font-family: 'Poppins', 'Inter', system-ui, sans-serif;
+    }
+}
+
+@layer utilities {
+    .navy-bg {
+        background-color: oklch(var(--navy));
+    }
+    .navy-mid-bg {
+        background-color: oklch(var(--navy-mid));
+    }
+    .electric-blue-bg {
+        background-color: oklch(var(--electric-blue));
+    }
+    .gold-text {
+        color: oklch(var(--gold));
+    }
+    .gold-bg {
+        background-color: oklch(var(--gold));
+    }
+    .text-navy {
+        color: oklch(var(--navy));
+    }
+    .text-electric-blue {
+        color: oklch(var(--electric-blue));
+    }
+    .btn-glow:hover {
+        box-shadow: 0 0 20px oklch(var(--electric-blue) / 0.5);
+    }
+    .btn-gold-glow:hover {
+        box-shadow: 0 0 20px oklch(var(--gold) / 0.5);
+    }
+    .card-hover {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .card-hover:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px oklch(var(--electric-blue) / 0.15);
+    }
+    .category-border-blue {
+        border-left: 4px solid oklch(var(--electric-blue));
+    }
+    .category-border-gold {
+        border-left: 4px solid oklch(var(--gold));
+    }
+    .category-border-green {
+        border-left: 4px solid oklch(0.55 0.18 145);
+    }
+    .category-border-orange {
+        border-left: 4px solid oklch(0.65 0.2 30);
+    }
+    .category-border-purple {
+        border-left: 4px solid oklch(0.5 0.15 300);
+    }
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+}
+
+@keyframes bounce-in {
+    0% { transform: scale(0) translateY(20px); opacity: 0; }
+    60% { transform: scale(1.1) translateY(-5px); opacity: 1; }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+@keyframes float-up {
+    0% { transform: translateY(10px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 oklch(var(--electric-blue) / 0.4); }
+    70% { box-shadow: 0 0 0 10px oklch(var(--electric-blue) / 0); }
+    100% { box-shadow: 0 0 0 0 oklch(var(--electric-blue) / 0); }
+}
+
+.animate-bounce-in {
+    animation: bounce-in 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.animate-float-up {
+    animation: float-up 0.4s ease-out forwards;
+}
+
+.animate-pulse-ring {
+    animation: pulse-ring 2s infinite;
+}
+
+.typing-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: oklch(var(--electric-blue));
+    animation: typing 1.4s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(1) { animation-delay: 0s; }
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-6px); opacity: 1; }
+}
