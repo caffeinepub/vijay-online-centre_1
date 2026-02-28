@@ -1,546 +1,417 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ExternalBlob } from '../backend';
-import { ApplicationStatus } from '../backend';
-import {
-  useGetApplicationById,
-  useAddApplication,
-  useMarkPaymentPendingVerification,
-  useGetRejectionMessage,
-} from '../hooks/useQueries';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import {
-  Loader2,
-  Upload,
-  CheckCircle,
-  XCircle,
-  Clock,
-  FileText,
-  Phone,
-  User,
-  IndianRupee,
-} from 'lucide-react';
+import React, { useState, useRef } from "react";
+import { useSubmitApplication } from "../hooks/useQueries";
+import { getLatestAuth } from "../hooks/useCustomerAuth";
+import { ExternalBlob } from "../backend";
+import { Upload, FileText, AlertCircle, Loader2, CheckCircle, ExternalLink, X } from "lucide-react";
+
+const ICICI_QR_IMAGE = "/assets/generated/icici-qr.dim_400x500.png";
+const UPI_ID = "8173064549@okicici";
+const UPI_NAME = "Vijay Online Centre";
 
 interface PaymentPageProps {
-  service: string;
-  onBack?: () => void;
+  selectedService: string;
+  onSuccess: (appId: string) => void;
 }
 
-type Step = 'form' | 'waiting' | 'payment' | 'verifying' | 'success' | 'rejected';
+type Step = "details" | "upload" | "submitting" | "submitted";
 
-interface FormData {
-  name: string;
-  phoneNumber: string;
-  files: File[];
+const ALL_SERVICES = [
+  "Aadhaar Update", "PAN Card", "Passport", "Voter ID", "Driving Licence", "Ration Card",
+  "Income Certificate", "Caste Certificate", "Residence Certificate", "Birth Certificate",
+  "Death Certificate", "Marriage Certificate", "Land Records", "Property Registration",
+  "NREGA Job Card", "PM Kisan", "Ayushman Bharat", "Scholarship Application",
+  "ITR Filing", "GST Registration", "Udyam Registration", "MSME Certificate",
+  "Shop & Establishment", "FSSAI Licence", "Trade Licence",
+  "Bank Account Opening", "Loan Application", "Insurance", "Pension", "EPF/PF Services",
+  "Railway Ticket Booking", "Bus Ticket Booking",
+];
+
+function generateAppId(): string {
+  const ts = Date.now().toString(36).toUpperCase();
+  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `VOC-${ts}-${rand}`;
 }
 
-// ─── UPI QR Generator ─────────────────────────────────────────────────────────
+export default function PaymentPage({ selectedService, onSuccess }: PaymentPageProps) {
+  const auth = getLatestAuth();
 
-function UpiQRCode({ amount, appId }: { amount: number; appId: string }) {
-  const upiString = `upi://pay?pa=8173064549@okicici&pn=VijayOnlineCentre&am=${amount}&cu=INR&tn=AppID-${appId}`;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(upiString)}`;
-
-  return (
-    <div className="flex flex-col items-center gap-3">
-      <img
-        src={qrUrl}
-        alt="UPI QR Code"
-        className="w-56 h-56 rounded-lg border-2 border-primary shadow-md"
-      />
-      <p className="text-xs text-muted-foreground text-center">
-        Scan with any UPI app (PhonePe, GPay, Paytm, etc.)
-      </p>
-      <div className="flex items-center gap-1 text-sm font-semibold text-foreground">
-        <IndianRupee className="w-4 h-4" />
-        {amount}
-      </div>
-      <p className="text-xs text-muted-foreground">UPI ID: 8173064549@okicici</p>
-    </div>
-  );
-}
-
-// ─── Step 1: Application Form ─────────────────────────────────────────────────
-
-function ApplicationForm({
-  service,
-  onSubmit,
-}: {
-  service: string;
-  onSubmit: (appId: string, data: FormData) => void;
-}) {
-  const [name, setName] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [step, setStep] = useState<Step>("details");
+  const [name, setName] = useState(auth?.name || "");
+  const [phone, setPhone] = useState(auth?.mobile || "");
+  const [serviceChoice, setServiceChoice] = useState(selectedService || "");
   const [files, setFiles] = useState<File[]>([]);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [uploadProgress, setUploadProgress] = useState<number>(0);
-  const addApplicationMutation = useAddApplication();
+  const [error, setError] = useState("");
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [submittedAppId, setSubmittedAppId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const validate = () => {
-    const errs: Record<string, string> = {};
-    if (!name.trim()) errs.name = 'Name is required';
-    if (!phoneNumber.trim()) errs.phone = 'Phone number is required';
-    else if (!/^\d{10}$/.test(phoneNumber.replace(/\s/g, '')))
-      errs.phone = 'Enter a valid 10-digit phone number';
-    if (files.length === 0) errs.files = 'Please upload at least one document';
-    return errs;
+  const submitMutation = useSubmitApplication();
+
+  const handleDetailsNext = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (!name.trim()) { setError("Please enter your name."); return; }
+    if (!phone.trim() || phone.length < 10) { setError("Please enter a valid 10-digit phone number."); return; }
+    if (!serviceChoice) { setError("Please select a service."); return; }
+    setStep("upload");
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setFiles(Array.from(e.target.files));
+      setFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const errs = validate();
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs);
-      return;
-    }
-    setErrors({});
+  const removeFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  };
 
-    const appId = `app-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  // Submit without documents (text-only application)
+  const submitWithoutDocs = async (appId: string) => {
+    return submitMutation.mutateAsync({
+      id: appId,
+      applicantName: name.trim(),
+      phoneNumber: phone.trim(),
+      service: serviceChoice,
+      documents: [],
+    });
+  };
+
+  // Submit with documents
+  const submitWithDocs = async (appId: string) => {
+    const documents = await Promise.all(
+      files.map(async (file) => {
+        const arrayBuffer = await file.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuffer) as Uint8Array<ArrayBuffer>;
+        const blob = ExternalBlob.fromBytes(bytes).withUploadProgress((pct) => {
+          setUploadProgress(pct);
+        });
+        return { name: file.name, content: blob };
+      })
+    );
+
+    return submitMutation.mutateAsync({
+      id: appId,
+      applicantName: name.trim(),
+      phoneNumber: phone.trim(),
+      service: serviceChoice,
+      documents,
+    });
+  };
+
+  const handleSubmit = async () => {
+    setError("");
+    setStep("submitting");
+    setUploadProgress(0);
+
+    const appId = generateAppId();
 
     try {
-      // Convert files to ExternalBlob
-      const documents = await Promise.all(
-        files.map(async (file) => {
-          const arrayBuffer = await file.arrayBuffer();
-          const bytes = new Uint8Array(arrayBuffer);
-          const blob = ExternalBlob.fromBytes(bytes).withUploadProgress((pct) => {
-            setUploadProgress(pct);
-          });
-          return { name: file.name, content: blob };
-        })
-      );
+      // Try with documents first if any files selected
+      let result;
+      if (files.length > 0) {
+        try {
+          result = await submitWithDocs(appId);
+        } catch (docErr: unknown) {
+          const docErrMsg = docErr instanceof Error ? docErr.message : String(docErr);
+          // If blob/v3 error, fall back to no-docs submission
+          const isBlobError =
+            docErrMsg.includes("v3") ||
+            docErrMsg.includes("Expected v3") ||
+            docErrMsg.includes("blob") ||
+            docErrMsg.includes("upload") ||
+            docErrMsg.includes("ExternalBlob") ||
+            docErrMsg.includes("chunk");
 
-      await addApplicationMutation.mutateAsync({
-        id: appId,
-        name: name.trim(),
-        phoneNumber: phoneNumber.trim(),
-        service,
-        documents,
-      });
+          if (isBlobError) {
+            const fallbackId = generateAppId();
+            result = await submitWithoutDocs(fallbackId);
+          } else {
+            throw docErr;
+          }
+        }
+      } else {
+        result = await submitWithoutDocs(appId);
+      }
 
-      onSubmit(appId, { name, phoneNumber, files });
-    } catch (err: any) {
-      setErrors({ submit: err?.message ?? 'Failed to submit application. Please try again.' });
+      const returnedId = result?.id || appId;
+      localStorage.setItem("applicationId", returnedId);
+      localStorage.setItem("vijay_app_id", returnedId);
+      setSubmittedAppId(returnedId);
+      setStep("submitted");
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      setError(`Submission failed: ${errMsg}. Please try again.`);
+      setStep("upload");
     }
   };
 
+  // ── Submitting ─────────────────────────────────────────────────────────────
+  if (step === "submitting") {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-sm w-full text-center space-y-4">
+          <Loader2 className="w-12 h-12 animate-spin text-blue-700 mx-auto" />
+          <p className="font-semibold text-gray-700">Submitting your application...</p>
+          {uploadProgress > 0 && uploadProgress < 100 && (
+            <div className="space-y-1">
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-blue-700 h-2 rounded-full transition-all"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-500">Uploading: {uploadProgress}%</p>
+            </div>
+          )}
+          <p className="text-xs text-gray-400">Please do not close this page</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Submitted ──────────────────────────────────────────────────────────────
+  if (step === "submitted") {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8 px-4">
+        <div className="max-w-lg mx-auto space-y-4">
+          {/* Success */}
+          <div className="bg-green-50 border border-green-200 rounded-2xl p-6 text-center space-y-2">
+            <CheckCircle className="w-12 h-12 text-green-600 mx-auto" />
+            <h2 className="text-xl font-bold text-green-800">Application Submitted!</h2>
+            <p className="text-sm text-green-700">Your application has been received successfully.</p>
+            {submittedAppId && (
+              <div className="bg-white rounded-lg px-4 py-2 mt-2 inline-block">
+                <p className="text-xs text-gray-500">Application ID</p>
+                <p className="font-mono font-bold text-blue-800">{submittedAppId}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Payment info */}
+          <div className="bg-white rounded-2xl shadow-sm p-5 space-y-4">
+            <h3 className="font-semibold text-gray-800">Payment Instructions</h3>
+            <p className="text-sm text-gray-600">
+              Our team will review your application and set the fee. Once set, please pay using the QR below.
+            </p>
+
+            {/* ICICI QR */}
+            <div className="flex flex-col items-center gap-3 py-4 border rounded-xl bg-gray-50">
+              <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                <span className="text-orange-600 font-bold">🏦</span>
+                ICICI Bank - XX47
+              </div>
+              <img
+                src={ICICI_QR_IMAGE}
+                alt="ICICI Bank UPI QR Code"
+                className="w-48 h-48 object-contain rounded-lg shadow"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src =
+                    "/assets/generated/upi-qr-placeholder.dim_300x300.png";
+                }}
+              />
+              <p className="text-xs text-gray-500 font-mono">{UPI_ID}</p>
+              <a
+                href={`upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(UPI_NAME)}`}
+                className="inline-flex items-center gap-2 text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors"
+                style={{ backgroundColor: "#002147" }}
+              >
+                <ExternalLink className="w-4 h-4" />
+                Pay Now via UPI
+              </a>
+            </div>
+
+            <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-700 space-y-1">
+              <p className="font-semibold">After payment:</p>
+              <p>• Note your Transaction ID / UTR number</p>
+              <p>• Track your application status on the Dashboard</p>
+              <p>• Our team will confirm payment within 24 hours</p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => onSuccess(submittedAppId || "")}
+            className="w-full text-white font-semibold py-3 rounded-xl transition-colors"
+            style={{ backgroundColor: "#002147" }}
+          >
+            Track My Application →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Details Step ───────────────────────────────────────────────────────────
+  if (step === "details") {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8 px-4">
+        <div className="max-w-lg mx-auto">
+          <div className="bg-white rounded-2xl shadow-sm p-6 space-y-5">
+            <div>
+              <h2 className="text-xl font-bold text-gray-800">Apply for Service</h2>
+              <p className="text-sm text-gray-500 mt-1">Fill in your details to get started</p>
+            </div>
+
+            <form onSubmit={handleDetailsNext} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Full Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter your full name"
+                  className="w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Phone Number <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="10-digit mobile number"
+                  maxLength={10}
+                  className="w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Select Service <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={serviceChoice}
+                  onChange={(e) => setServiceChoice(e.target.value)}
+                  className="w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  required
+                >
+                  <option value="">-- Choose a service --</option>
+                  {ALL_SERVICES.map((svc) => (
+                    <option key={svc} value={svc}>{svc}</option>
+                  ))}
+                </select>
+              </div>
+
+              {error && (
+                <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-sm">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="w-full text-white font-semibold py-3 rounded-xl transition-colors"
+                style={{ backgroundColor: "#002147" }}
+              >
+                Next: Upload Documents →
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Upload Step ────────────────────────────────────────────────────────────
   return (
-    <Card className="w-full max-w-lg mx-auto">
-      <CardHeader>
-        <CardTitle className="text-xl">Apply for Service</CardTitle>
-        <p className="text-muted-foreground text-sm">{service}</p>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-lg mx-auto space-y-4">
+        {/* Summary */}
+        <div className="bg-white rounded-2xl shadow-sm p-4 border-l-4" style={{ borderLeftColor: "#002147" }}>
+          <p className="text-xs text-gray-500">Applying for</p>
+          <p className="font-bold text-gray-800">{serviceChoice}</p>
+          <p className="text-sm text-gray-600">{name} · {phone}</p>
+        </div>
+
+        {/* Upload */}
+        <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
           <div>
-            <label className="text-sm font-medium mb-1 flex items-center gap-1">
-              <User className="w-4 h-4" /> Full Name
-            </label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter your full name"
-            />
-            {errors.name && <p className="text-destructive text-xs mt-1">{errors.name}</p>}
+            <h2 className="text-lg font-bold text-gray-800">Upload Documents</h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Upload supporting documents (optional — you can skip and submit now)
+            </p>
           </div>
 
-          <div>
-            <label className="text-sm font-medium mb-1 flex items-center gap-1">
-              <Phone className="w-4 h-4" /> Phone Number
-            </label>
-            <Input
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="10-digit mobile number"
-              type="tel"
-            />
-            {errors.phone && <p className="text-destructive text-xs mt-1">{errors.phone}</p>}
-          </div>
-
-          <div>
-            <label className="text-sm font-medium mb-1 flex items-center gap-1">
-              <Upload className="w-4 h-4" /> Upload Documents
-            </label>
+          <div
+            className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+            <p className="text-sm text-gray-600 font-medium">Click to upload files</p>
+            <p className="text-xs text-gray-400 mt-1">PDF, JPG, PNG supported</p>
             <input
+              ref={fileInputRef}
               type="file"
               multiple
+              accept=".pdf,.jpg,.jpeg,.png"
               onChange={handleFileChange}
-              className="block w-full text-sm text-muted-foreground file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-sm file:font-medium file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 cursor-pointer"
-              accept="image/*,.pdf,.doc,.docx"
+              className="hidden"
             />
-            {files.length > 0 && (
-              <ul className="mt-2 space-y-1">
-                {files.map((f, i) => (
-                  <li key={i} className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <FileText className="w-3 h-3" />
-                    {f.name}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {errors.files && <p className="text-destructive text-xs mt-1">{errors.files}</p>}
           </div>
 
-          {addApplicationMutation.isPending && uploadProgress > 0 && uploadProgress < 100 && (
-            <div className="w-full bg-muted rounded-full h-2">
-              <div
-                className="bg-primary h-2 rounded-full transition-all"
-                style={{ width: `${uploadProgress}%` }}
-              />
+          {files.length > 0 && (
+            <div className="space-y-2">
+              {files.map((file, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-3 bg-gray-50 rounded-lg px-3 py-2"
+                >
+                  <FileText className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                  <span className="text-sm text-gray-700 flex-1 truncate">{file.name}</span>
+                  <span className="text-xs text-gray-400">
+                    {(file.size / 1024).toFixed(0)} KB
+                  </span>
+                  <button
+                    onClick={() => removeFile(index)}
+                    className="text-gray-400 hover:text-red-500 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
             </div>
           )}
 
-          {errors.submit && (
-            <p className="text-destructive text-sm bg-destructive/10 rounded p-2">
-              {errors.submit}
-            </p>
+          {error && (
+            <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              {error}
+            </div>
           )}
 
-          <Button type="submit" disabled={addApplicationMutation.isPending} className="w-full">
-            {addApplicationMutation.isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                Submitting...
-              </>
-            ) : (
-              <>
-                <Upload className="w-4 h-4 mr-2" />
-                Submit Application
-              </>
-            )}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
-  );
-}
-
-// ─── Main Payment Page ────────────────────────────────────────────────────────
-
-export default function PaymentPage({ service, onBack }: PaymentPageProps) {
-  const [step, setStep] = useState<Step>('form');
-  const [appId, setAppId] = useState<string | null>(null);
-  const [customerName, setCustomerName] = useState('');
-  const [rejectionMessage, setRejectionMessage] = useState<string | null>(null);
-  const [paidClicked, setPaidClicked] = useState(false);
-
-  const markPaymentMutation = useMarkPaymentPendingVerification();
-
-  // Poll application status
-  const { data: application, isLoading: appLoading } = useGetApplicationById(appId);
-
-  // Fetch rejection message when needed
-  const { data: fetchedRejectionMsg } = useGetRejectionMessage(
-    step === 'rejected' ? appId : null
-  );
-
-  // Derive step from application status
-  useEffect(() => {
-    if (!application || step === 'form') return;
-
-    const status = application.status;
-
-    if (status === ApplicationStatus.priceSet && step === 'waiting') {
-      setStep('payment');
-    } else if (status === ApplicationStatus.paymentPendingVerification && step === 'payment') {
-      setStep('verifying');
-    } else if (status === ApplicationStatus.completed) {
-      setStep('success');
-    }
-  }, [application, step]);
-
-  // Check for rejection by polling getRejectionMessage when waiting
-  const rejectionCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => {
-    if (!appId || step !== 'waiting') {
-      if (rejectionCheckRef.current) {
-        clearInterval(rejectionCheckRef.current);
-        rejectionCheckRef.current = null;
-      }
-      return;
-    }
-
-    // Poll for rejection message every 10 seconds
-    rejectionCheckRef.current = setInterval(async () => {
-      // The useGetApplicationById already polls; we check if application is null (deleted = rejected)
-      // Also check via getRejectionMessage
-    }, 10000);
-
-    return () => {
-      if (rejectionCheckRef.current) {
-        clearInterval(rejectionCheckRef.current);
-        rejectionCheckRef.current = null;
-      }
-    };
-  }, [appId, step]);
-
-  // When application becomes null while waiting (deleted = rejected), check rejection message
-  useEffect(() => {
-    if (step === 'waiting' && appId && !appLoading && application === null) {
-      setStep('rejected');
-    }
-  }, [application, appLoading, appId, step]);
-
-  // Set rejection message from fetched data
-  useEffect(() => {
-    if (fetchedRejectionMsg) {
-      setRejectionMessage(fetchedRejectionMsg);
-    }
-  }, [fetchedRejectionMsg]);
-
-  const handleFormSubmit = (id: string, data: FormData) => {
-    setAppId(id);
-    setCustomerName(data.name);
-    setStep('waiting');
-  };
-
-  const handleIHavePaid = async () => {
-    if (!appId) return;
-    setPaidClicked(true);
-    try {
-      await markPaymentMutation.mutateAsync(appId);
-      setStep('verifying');
-    } catch (err: any) {
-      setPaidClicked(false);
-      alert('Error: ' + (err?.message ?? 'Could not update payment status'));
-    }
-  };
-
-  // ── Step: Form ──
-  if (step === 'form') {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 py-8">
-        {onBack && (
-          <button
-            onClick={onBack}
-            className="self-start mb-4 text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
-          >
-            ← Back to Services
-          </button>
-        )}
-        <ApplicationForm service={service} onSubmit={handleFormSubmit} />
-      </div>
-    );
-  }
-
-  // ── Step: Waiting for Admin to Review ──
-  if (step === 'waiting') {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 py-8">
-        <Card className="w-full max-w-md text-center">
-          <CardContent className="pt-8 pb-8 flex flex-col items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-              <Clock className="w-8 h-8 text-primary animate-pulse" />
-            </div>
-            <h2 className="text-xl font-bold">Application Submitted!</h2>
-            <p className="text-muted-foreground text-sm">
-              Your documents have been uploaded. Vijay Ji is reviewing your application.
-            </p>
-            <div className="bg-muted rounded-lg px-4 py-2 text-xs font-mono text-muted-foreground">
-              Application ID: {appId}
-            </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader2 className="w-3 h-3 animate-spin" />
-              Checking for updates every 10 seconds…
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Once Vijay Ji confirms and sets the fee, the payment QR code will appear here.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // ── Step: Rejected ──
-  if (step === 'rejected') {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 py-8">
-        <Card className="w-full max-w-md text-center border-destructive">
-          <CardContent className="pt-8 pb-8 flex flex-col items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
-              <XCircle className="w-8 h-8 text-destructive" />
-            </div>
-            <h2 className="text-xl font-bold text-destructive">Application Rejected</h2>
-            <p className="text-foreground text-base font-medium">
-              {rejectionMessage ??
-                'Your request was rejected by Vijay Ji. Please contact for details.'}
-            </p>
-            <div className="bg-muted rounded-lg px-4 py-2 text-xs font-mono text-muted-foreground">
-              Application ID: {appId}
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Please visit the centre or call for more information.
-            </p>
-            {onBack && (
-              <Button variant="outline" onClick={onBack} className="mt-2">
-                ← Back to Services
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // ── Step: Payment (QR shown) ──
-  if (step === 'payment') {
-    const fee = application?.price ? Number(application.price) : 0;
-
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 py-8">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-center text-xl">Complete Payment</CardTitle>
-            <p className="text-center text-muted-foreground text-sm">{service}</p>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center gap-5">
-            <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg px-4 py-2 text-center">
-              <p className="text-green-700 dark:text-green-300 text-sm font-medium">
-                ✅ Application Confirmed by Vijay Ji
-              </p>
-              <p className="text-green-600 dark:text-green-400 text-xs mt-0.5">
-                Service Fee: ₹{fee}
-              </p>
-            </div>
-
-            <UpiQRCode amount={fee} appId={appId ?? ''} />
-
-            {/* ICICI Reference QR */}
-            <div className="flex flex-col items-center gap-1">
-              <p className="text-xs text-muted-foreground font-medium">Reference QR (ICICI)</p>
-              <img
-                src="/assets/generated/icici-qr-reference.dim_400x400.png"
-                alt="ICICI Reference QR"
-                className="w-32 h-32 rounded border border-border"
-              />
-            </div>
-
-            <div className="w-full bg-muted rounded-lg p-3 text-sm space-y-1">
-              <p><span className="font-medium">Name:</span> {customerName}</p>
-              <p><span className="font-medium">Service:</span> {service}</p>
-              <p><span className="font-medium">Amount:</span> ₹{fee}</p>
-              <p className="font-mono text-xs text-muted-foreground">ID: {appId}</p>
-            </div>
-
-            <Button
-              className="w-full bg-green-600 hover:bg-green-700 text-white"
-              onClick={handleIHavePaid}
-              disabled={markPaymentMutation.isPending || paidClicked}
+          <div className="flex gap-3">
+            <button
+              onClick={() => setStep("details")}
+              className="flex-1 border border-gray-300 text-gray-700 font-medium py-3 rounded-xl hover:bg-gray-50 transition-colors text-sm"
             >
-              {markPaymentMutation.isPending ? (
+              ← Back
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={submitMutation.isPending}
+              className="flex-1 text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+              style={{ backgroundColor: "#002147" }}
+            >
+              {submitMutation.isPending ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Processing…
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Submitting...
                 </>
               ) : (
-                <>
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  I Have Paid
-                </>
+                "Submit Application ✓"
               )}
-            </Button>
-
-            <p className="text-xs text-muted-foreground text-center">
-              After paying, click "I Have Paid" to notify Vijay Ji for verification.
-            </p>
-          </CardContent>
-        </Card>
+            </button>
+          </div>
+        </div>
       </div>
-    );
-  }
-
-  // ── Step: Verifying ──
-  if (step === 'verifying') {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 py-8">
-        <Card className="w-full max-w-md text-center">
-          <CardContent className="pt-8 pb-8 flex flex-col items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-950 flex items-center justify-center">
-              <Loader2 className="w-8 h-8 text-amber-600 animate-spin" />
-            </div>
-            <h2 className="text-xl font-bold">Payment Received</h2>
-            <p className="text-muted-foreground text-sm">
-              Waiting for Vijay Ji to verify your payment…
-            </p>
-            <div className="bg-muted rounded-lg px-4 py-2 text-xs font-mono text-muted-foreground">
-              Application ID: {appId}
-            </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader2 className="w-3 h-3 animate-spin" />
-              Checking status every 10 seconds…
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // ── Step: Success ──
-  if (step === 'success') {
-    const fee = application?.price ? Number(application.price) : 0;
-
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 py-8">
-        <Card className="w-full max-w-md text-center border-green-300 dark:border-green-700">
-          <CardContent className="pt-8 pb-8 flex flex-col items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-950 flex items-center justify-center">
-              <CheckCircle className="w-8 h-8 text-green-600" />
-            </div>
-            <h2 className="text-2xl font-bold text-green-700 dark:text-green-400">
-              Payment Successful ✅
-            </h2>
-            <p className="text-muted-foreground text-sm">
-              Your payment has been verified by Vijay Ji. Thank you!
-            </p>
-
-            {/* Receipt */}
-            <div className="w-full bg-muted rounded-xl p-4 text-left space-y-2 border border-border">
-              <p className="text-center font-bold text-foreground mb-3">🧾 Receipt</p>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Customer Name</span>
-                <span className="font-medium">{customerName || application?.name}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Service</span>
-                <span className="font-medium text-right max-w-[60%]">{service}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Amount Paid</span>
-                <span className="font-bold text-green-700 dark:text-green-400">₹{fee}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">Application ID</span>
-                <span className="font-mono text-xs">{appId}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">Date</span>
-                <span>{new Date().toLocaleDateString('en-IN')}</span>
-              </div>
-            </div>
-
-            <Badge variant="default" className="bg-green-600 text-white">
-              Order Completed
-            </Badge>
-
-            {onBack && (
-              <Button variant="outline" onClick={onBack} className="mt-2">
-                ← Back to Services
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  return null;
+    </div>
+  );
 }

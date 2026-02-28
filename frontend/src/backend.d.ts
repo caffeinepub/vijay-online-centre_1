@@ -18,24 +18,50 @@ export interface Application {
     id: string;
     service: string;
     status: ApplicationStatus;
+    applicantName: string;
     documents: Array<Document>;
-    name: string;
+    rejection?: RejectionInfo;
+    stage: bigint;
     phoneNumber: string;
     price?: bigint;
+    transactionId?: string;
+}
+export interface ManagerNotification {
+    message: string;
+    timestamp: bigint;
+}
+export interface Service {
+    name: string;
+    serviceId: bigint;
+    price: bigint;
+}
+export interface RejectionInfo {
+    timestamp: bigint;
+    reason: string;
 }
 export interface Document {
     content: ExternalBlob;
     name: string;
 }
+export interface ApplicationFormData {
+    id: string;
+    service: string;
+    applicantName: string;
+    documents: Array<Document>;
+    phoneNumber: string;
+}
 export interface UserProfile {
     name: string;
+    role: string;
+    phoneNumber?: string;
 }
 export enum ApplicationStatus {
-    awaitingPrice = "awaitingPrice",
+    submitted = "submitted",
+    feeSet = "feeSet",
     completed = "completed",
-    paymentPendingVerification = "paymentPendingVerification",
-    documentsUploaded = "documentsUploaded",
-    priceSet = "priceSet"
+    rejected = "rejected",
+    paymentVerifying = "paymentVerifying",
+    paymentPending = "paymentPending"
 }
 export enum UserRole {
     admin = "admin",
@@ -43,57 +69,39 @@ export enum UserRole {
     guest = "guest"
 }
 export interface backendInterface {
-    /**
-     * / Submit application with documents (documentsUploaded state)
-     */
-    addApplication(id: string, name: string, phoneNumber: string, service: string, documents: Array<Document>): Promise<boolean>;
-    /**
-     * / Admin login using static credentials — returns session token on success
-     */
-    adminLogin(username: string, password: string): Promise<string>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
-    /**
-     * / Check if user can proceed to payment (status must be priceSet)
-     */
     canUserPay(appId: string): Promise<boolean>;
-    /**
-     * / Confirm payment — admin only (moves from paymentPendingVerification to completed)
-     */
+    clearNotification(notificationId: bigint): Promise<boolean>;
     confirmPayment(appId: string, adminToken: string): Promise<boolean>;
-    /**
-     * / Get a single application by ID — accessible to users (own) or admins
-     */
+    getActivePaymentPrice(): Promise<bigint>;
+    getAllApplications(): Promise<Array<Application>>;
+    getAllNotifications(): Promise<Array<ManagerNotification>>;
+    getAllServices(): Promise<Array<Service>>;
     getApplication(appId: string): Promise<Application | null>;
-    /**
-     * / Get applications filtered by status — admin only
-     */
+    getApplicationFee(appId: string): Promise<bigint | null>;
     getApplicationsByStatus(status: ApplicationStatus, adminToken: string): Promise<Array<Application>>;
-    /**
-     * / User profile functions required by frontend
-     */
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
-    /**
-     * / Get rejection message — open to anyone
-     */
-    getRejectionMessage(appId: string): Promise<string | null>;
+    getManagerNotifications(): Promise<Array<ManagerNotification>>;
+    getPaymentDetails(): Promise<{
+        qr?: ExternalBlob;
+        upiDetails: string;
+        amount: bigint;
+    }>;
+    getPaymentIntentURL(): Promise<string>;
+    getRejectionReason(appId: string): Promise<RejectionInfo | null>;
+    getServicePrice(serviceId: bigint): Promise<bigint | null>;
+    getUserApplications(user: string, adminToken: string): Promise<Array<Application>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
-    /**
-     * / "I Have Paid" — moves status to paymentPendingVerification
-     */
-    markPaymentPendingVerification(appId: string): Promise<boolean>;
-    /**
-     * / Reject application and provide rejection message — admin only
-     */
-    rejectApplication(appId: string, adminToken: string): Promise<boolean>;
+    isPaymentActive(): Promise<boolean>;
+    rejectApplication(appId: string, reason: string, adminToken: string): Promise<boolean>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
-    /**
-     * / Set application fee (moves to priceSet) — admin only
-     */
+    setActivePrice(amount: bigint): Promise<void>;
     setApplicationFee(appId: string, fee: bigint, adminToken: string): Promise<boolean>;
-    /**
-     * / Update application status — admin only
-     */
-    updateApplicationStatus(appId: string, status: ApplicationStatus, adminToken: string): Promise<boolean>;
+    setPaymentQR(blob: ExternalBlob): Promise<void>;
+    setServicePrice(serviceId: bigint, name: string, price: bigint, adminToken: string): Promise<boolean>;
+    submitApplication(app: ApplicationFormData): Promise<Application>;
+    submitPayment(appId: string, transactionId: string): Promise<boolean>;
+    updateApplicationStage(appId: string, stage: bigint, adminToken: string): Promise<boolean>;
 }

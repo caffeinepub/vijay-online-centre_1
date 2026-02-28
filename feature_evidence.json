@@ -2,8 +2,31 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-in-the-admin-dashboard-active-requests-tab-which-lists-applications-in-documentsuploaded-status-display-two-action-buttons-per-row-confirm-and-reject-the-confirm-button-transitions-the-application-to-awaitingprice-allows-the-admin-to-set-the-fee-and-generates-the-upi-qr-for-the-customer-the-reject-button-calls-the-rejectapplication-backend-function-after-a-successful-call-the-row-is-immediately-removed-from-the-admin-list-the-admin-must-be-able-to-view-all-uploaded-documents-clearly-inline-preview-or-download-links-before-deciding-to-confirm-or-reject",
-      "featureTitle": "In the Admin Dashboard 'Active Requests' tab (which lists applications in 'DocumentsUploaded' status), display two action buttons per row: 'CONFIRM' and 'REJECT'. The 'CONFIRM' button transitions the application to 'AwaitingPrice' / allows the admin to set the fee and generates the UPI QR for the customer. The 'REJECT' button calls the rejectApplication backend function; after a successful call, the row is immediately removed from the admin list. The admin must be able to view all uploaded documents clearly (inline preview or download links) before deciding to CONFIRM or REJECT.",
+      "featureId": "feature-rewrite-the-refresh-button-handler-in-adminpage-tsx-to-forcefully-invalidate-and-re-fetch-all-application-data-from-the-backend-bypassing-any-cache-the-refetch-must-use-react-query-s-refetch-with-staletime-0-and-must-work-correctly-on-all-mobile-browsers-including-chrome-on-oneplus-android-devices-after-clicking-refresh-the-application-list-must-visibly-update-with-the-latest-rows-from-the-applications-table",
+      "featureTitle": "Rewrite the Refresh button handler in AdminPage.tsx to forcefully invalidate and re-fetch all application data from the backend (bypassing any cache). The refetch must use React Query's refetch with staleTime=0 and must work correctly on all mobile browsers including Chrome on OnePlus/Android devices. After clicking Refresh, the application list must visibly update with the latest rows from the Applications table.",
+      "files": [
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/AdminPage.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "qr-code@1.0.0",
+        "camera@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0"
+      ],
+      "testIds": [
+        "REQ-1"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-fix-the-active-submission-count-display-in-the-adminpage-so-that-after-clicking-refresh-the-count-immediately-reflects-the-real-number-of-submitted-applications-instead-of-showing-00-the-count-must-be-derived-directly-from-the-freshly-fetched-application-data",
+      "featureTitle": "Fix the active submission count display in the AdminPage so that after clicking Refresh, the count immediately reflects the real number of submitted applications instead of showing '00'. The count must be derived directly from the freshly fetched application data.",
       "files": [
         "frontend/src/pages/AdminPage.tsx"
       ],
@@ -19,38 +42,17 @@
         "blob-storage@4.0.0"
       ],
       "testIds": [
-        "REQ-26"
+        "REQ-2"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-update-the-customer-facing-paymentpage-polling-logic-so-that-when-the-backend-returns-a-rejected-status-for-the-polled-application-the-customer-s-waiting-screen-transitions-to-a-clear-rejection-message-your-request-was-rejected-by-vijay-ji-please-contact-for-details-this-message-must-replace-the-waiting-for-price-spinner-and-must-not-show-any-payment-qr-code",
-      "featureTitle": "Update the customer-facing PaymentPage polling logic so that when the backend returns a 'Rejected' status for the polled application, the customer's waiting screen transitions to a clear rejection message: 'Your request was rejected by Vijay Ji. Please contact for details.' This message must replace the 'waiting for price' spinner and must not show any payment QR code.",
+      "featureId": "feature-fix-the-set-price-mutation-in-usequeries-ts-and-adminpage-tsx-so-that-submitting-a-fee-e-g-200-does-not-return-an-unauthorized-error-the-admin-actor-must-be-properly-authenticated-before-calling-the-setfee-backend-function-after-a-successful-set-price-call-the-updated-fee-must-be-immediately-visible-to-customers-on-the-dashboardpage-without-requiring-a-page-reload",
+      "featureTitle": "Fix the Set Price mutation in useQueries.ts and AdminPage.tsx so that submitting a fee (e.g., 200) does not return an 'Unauthorized' error. The admin actor must be properly authenticated before calling the setFee backend function. After a successful Set Price call, the updated fee must be immediately visible to customers on the DashboardPage without requiring a page reload.",
       "files": [
-        "frontend/src/pages/PaymentPage.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "qr-code@1.0.0",
-        "camera@1.0.0",
-        "authorization@4.0.0",
-        "blob-storage@4.0.0"
-      ],
-      "testIds": [
-        "REQ-27"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-enforce-the-confirm-first-payment-qr-reveal-logic-the-customer-must-not-see-the-upi-payment-qr-code-until-the-admin-has-explicitly-clicked-confirm-which-sets-the-fee-and-transitions-the-application-to-priceset-the-customer-s-paymentpage-must-poll-for-status-priceset-before-unlocking-and-displaying-the-dynamic-upi-qr-code-upi-pay-pa-8173064549-okicici-pn-vijayonlinecentre-am-fee-cu-inr-after-the-customer-clicks-i-have-paid-the-status-moves-to-paymentpendingverification-the-admin-s-payments-to-verify-tab-then-shows-a-done-button-per-row-clicking-done-calls-confirmpayment-and-transitions-the-application-to-completed-at-which-point-the-customer-s-screen-shows-payment-successful-with-a-receipt-summary",
-      "featureTitle": "Enforce the 'Confirm-First' payment QR reveal logic: the customer must NOT see the UPI payment QR code until the admin has explicitly clicked 'CONFIRM' (which sets the fee and transitions the application to 'PriceSet'). The customer's PaymentPage must poll for status 'PriceSet' before unlocking and displaying the dynamic UPI QR code (upi://pay?pa=8173064549@okicici&pn=VijayOnlineCentre&am={fee}&cu=INR). After the customer clicks 'I Have Paid', the status moves to 'PaymentPendingVerification'. The admin's 'Payments to Verify' tab then shows a 'DONE' button per row; clicking 'DONE' calls confirmPayment and transitions the application to 'Completed', at which point the customer's screen shows 'Payment Successful ✅' with a receipt summary.",
-      "files": [
+        "frontend/src/hooks/useQueries.ts",
         "frontend/src/pages/AdminPage.tsx",
-        "frontend/src/pages/PaymentPage.tsx"
+        "frontend/src/pages/DashboardPage.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -64,7 +66,29 @@
         "blob-storage@4.0.0"
       ],
       "testIds": [
-        "REQ-28"
+        "REQ-3"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-ensure-the-admin-login-credentials-vijay-123-username-vijay-password-123-and-vijay-2026-username-vijay-password-2026-both-continue-to-work-in-the-useadminauth-ts-hook-do-not-remove-or-alter-these-hardcoded-credentials-the-24-hour-session-stored-in-localstorage-must-remain-intact",
+      "featureTitle": "Ensure the admin login credentials vijay@123 (username: vijay, password: 123) and vijay@2026 (username: vijay, password: 2026) both continue to work in the useAdminAuth.ts hook. Do not remove or alter these hardcoded credentials. The 24-hour session stored in localStorage must remain intact.",
+      "files": [
+        "frontend/src/hooks/useAdminAuth.ts"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "qr-code@1.0.0",
+        "camera@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0"
+      ],
+      "testIds": [
+        "REQ-4"
       ],
       "confidence": "high"
     }

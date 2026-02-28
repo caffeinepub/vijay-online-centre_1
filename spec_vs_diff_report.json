@@ -1,44 +1,31 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-27T16:52:58.335Z",
-  "summary": "The diff implements most of the required features: admin auth reset (REQ-24), rejectApplication backend function (REQ-25), CONFIRM/REJECT buttons with document previews in admin (REQ-26), rejection message polling on customer PaymentPage (REQ-27), and confirm-first QR reveal logic with DONE button and receipt (REQ-28). However, several specific acceptance criteria have gaps, particularly around backend token validation and rejected state persistence via getApplicationById.",
+  "generatedAt": "2026-02-28T16:51:14.509Z",
+  "summary": "The diff implements all four requirements. REQ-1 (Refresh button force-refetch) is addressed in AdminPage.tsx with invalidateQueries + removeQueries + refetch and staleTime:0/gcTime:0 in useQueries.ts. REQ-2 (active count sync) is addressed via live-computed stats from fetched appList. REQ-4 (admin credentials) is preserved in useAdminAuth.ts with both credential pairs and 24-hour localStorage session. REQ-3 (Set Price / Unauthorized fix) is partially addressed with token validation in AdminPage.tsx, but the diff does not clearly show how the admin actor is authenticated at the backend actor level in useQueries.ts to prevent the Unauthorized error.",
   "missing_requirements": [
     {
-      "requirement": "After rejection, a customer polling getApplicationById for the rejected appId must receive a Rejected status with the message 'Your request was rejected by Vijay Ji. Please contact for details.' The application is deleted from the store but the rejection message must still be retrievable inline via getApplicationById.",
-      "reason": "The backend main.mo is truncated so it is unclear if getApplicationById checks the rejectionMessages map and returns a Rejected status with the message. The frontend PaymentPage uses a separate useGetRejectionMessage hook rather than getApplicationById returning rejection inline, which may not satisfy the AC requiring getApplicationById to indicate rejection.",
+      "id": "REQ-3",
+      "requirement": "The admin actor used for the setFee call must carry a valid identity/session so that the backend does not return Unauthorized. After a successful Set Price call, the updated fee must be immediately visible to customers on the DashboardPage without requiring a page reload.",
+      "reason": "The diff shows token validation and error display in AdminPage.tsx, but the truncated useQueries.ts does not show how useSetApplicationFee uses an admin-authenticated actor. The backend main.mo still checks AccessControl.hasPermission for #admin. There is no clear evidence that the actor used in the setFee mutation is admin-authenticated at the ICP identity level. DashboardPage fee visibility after Set Price via query invalidation is also not confirmed in the truncated diff.",
       "evidence": [
-        "backend/main.mo",
-        "frontend/src/pages/PaymentPage.tsx",
-        "frontend/src/hooks/useQueries.ts"
-      ]
-    },
-    {
-      "id": "REQ-24",
-      "requirement": "All protected admin endpoints must succeed when called with the valid credential-based session token alone, with no Unauthorized errors after correct login.",
-      "reason": "The backend uses both ICP caller-based AccessControl.isAdmin checks AND the SESSION123 token check on functions like setApplicationFee. A browser user authenticating via vijay@123/vijay@123456 credentials but not registered as an ICP admin principal would still hit Unauthorized from the AccessControl.isAdmin check, contradicting REQ-24.",
-      "evidence": [
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/AdminPage.tsx",
         "backend/main.mo"
       ]
     }
   ],
-  "hallucinated_features": [
-    {
-      "description": "A backend/migration.mo file was added implementing a versioned data migration module with a run() function to migrate actor state by adding the rejectionMessages map.",
-      "reason": "The build request did not request any migration module or versioned state migration infrastructure. It only asked for the rejectApplication function and rejection message storage. This is an unrequested architectural addition.",
-      "evidence": [
-        "backend/migration.mo"
-      ]
-    }
-  ],
+  "hallucinated_features": [],
   "confidence": 0.72,
   "changed_files": [
     "backend/main.mo",
-    "backend/migration.mo",
     "frontend-file-summaries.txt",
+    "frontend/src/App.tsx",
+    "frontend/src/components/AdminLoginModal.tsx",
+    "frontend/src/hooks/useAdminAuth.ts",
     "frontend/src/hooks/useQueries.ts",
     "frontend/src/pages/AdminPage.tsx",
-    "frontend/src/pages/PaymentPage.tsx",
+    "frontend/src/pages/DashboardPage.tsx",
     "project_state.json"
   ]
 }

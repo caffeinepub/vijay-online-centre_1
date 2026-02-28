@@ -1,172 +1,48 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 13,
-  "summary": "Vijay Online Centre – a professional full-featured government service center app. Features a service grid (Govt IDs, Certificates, Welfare, Finance, Travel/General), an 'Upload First, Pay Later' flow where customers first select a service and upload their documents (Aadhar, PAN, etc.), then wait for the admin to review and set the price, after which the UPI/QR payment appears on the customer's screen. Admin panel at /admin (login: vijay@123, password: vijay@123456) shows customer names, uploaded documents, and allows manually setting a price per request to generate a dynamic UPI/QR code. Admin must click CONFIRM/DONE before the customer sees 'Payment Successful'. Customer sees 'Payment Received. Waiting for Vijay Ji to verify...' until admin confirms. Admin dashboard shows Customer Name, Service Name, uploaded documents, and Transaction ID per request. Dynamic UPI/QR payment system (ICICI), floating WhatsApp & Call buttons, secure document vault, and mobile-responsive Blue/White/Dark UI.",
+  "projectStateVersion": 3,
+  "summary": "Admin dashboard project with Applications table management, featuring Refresh button (mobile-compatible), active count sync, Set Price functionality, and admin login system.",
   "architectural_notes": [
-    "Mobile-responsive, non-zoomable UI with Blue/White/Dark professional theme",
-    "Bilingual support (Hindi + English) throughout the app, especially in the AI chatbot",
-    "Dynamic QR generation: Admin-set fee auto-fills and locks the UPI payment amount",
-    "Admin and User roles with separate dashboards and access controls",
-    "Admin sets price per customer request; the dynamic QR is generated only after admin manually enters the fee for that specific customer",
-    "Payment confirmation is manual: admin must click CONFIRM/DONE before customer sees success; customer sees 'Payment Received. Waiting for Vijay Ji to verify...' in the interim",
-    "New flow is 'Upload First, Pay Later': document upload happens before payment; payment QR only unlocks after admin sets price; admin reviews documents in dashboard before pricing",
-    "Admin CONFIRM/REJECT flow: CONFIRM unlocks payment QR for customer; REJECT removes request from admin list and shows rejection message to customer; DONE button finalizes after payment"
+    "Admin credentials: vijay@123 / vijay@2026 must remain functional",
+    "Refresh button must use server-side API call to re-fetch Applications table data (no cache)",
+    "Set Price action must persist amount and be immediately visible to customers without auth errors"
   ],
   "known_issues": [
-    "App reported incomplete: User Side (wait-for-price flow) and Admin Dashboard (/admin with per-customer fee entry and QR generation) not yet functional",
-    "Admin login returning 'Unauthorized' and 'Invalid' errors despite correct credentials (vijay@123 / vijay@123456)"
+    "Refresh button does not update data on OnePlus (and likely other mobile browsers)",
+    "Active count shows '00' instead of real submission count after refresh",
+    "Set Price returns 'Unauthorized' errors and amount may not save correctly"
   ],
   "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-design-and-implement-the-main-public-facing-homepage-with-1-a-branded-header-with-the-app-name-vijay-online-centre-tagline-and-navigation-links-home-services-track-status-contact-2-a-hero-section-with-a-welcoming-message-3-the-full-service-grid-organized-into-five-category-sections-each-displaying-service-cards-with-icons-and-names-4-an-apply-now-cta-on-each-service-card-that-opens-an-application-form-5-a-footer-with-contact-info-91-81730-64549-and-upi-payment-details-the-entire-ui-must-use-a-professional-blue-white-dark-color-theme-be-fully-mobile-responsive-and-have-viewport-meta-set-to-prevent-user-zoom-user-scalable-no",
-      "title": "Design and implement the main public-facing homepage with: (1) A branded header with the app name 'Vijay Online Centre', tagline, and navigation links (Home, Services, Track Status, Contact); (2) A hero section with a welcoming message; (3) The full service grid organized into five category sections, each displaying service cards with icons and names; (4) An 'Apply Now' CTA on each service card that opens an application form; (5) A footer with contact info (+91 81730 64549) and UPI payment details. The entire UI must use a professional Blue/White/Dark color theme, be fully mobile-responsive, and have viewport meta set to prevent user zoom (user-scalable=no).",
+      "id": "feature-rewrite-the-refresh-button-handler-in-adminpage-tsx-to-forcefully-invalidate-and-re-fetch-all-application-data-from-the-backend-bypassing-any-cache-the-refetch-must-use-react-query-s-refetch-with-staletime-0-and-must-work-correctly-on-all-mobile-browsers-including-chrome-on-oneplus-android-devices-after-clicking-refresh-the-application-list-must-visibly-update-with-the-latest-rows-from-the-applications-table",
+      "title": "Rewrite the Refresh button handler in AdminPage.tsx to forcefully invalidate and re-fetch all application data from the backend (bypassing any cache). The refetch must use React Query's refetch with staleTime=0 and must work correctly on all mobile browsers including Chrome on OnePlus/Android devices. After clicking Refresh, the application list must visibly update with the latest rows from the Applications table.",
       "reqIds": [
-        "REQ-5"
+        "REQ-1"
       ],
       "version": 1
     },
     {
-      "id": "feature-implement-a-user-dashboard-page-accessible-after-internet-identity-login-that-shows-1-a-grid-of-all-service-icons-the-user-can-apply-for-2-a-my-applications-table-showing-all-submitted-applications-with-current-status-pending-in-progress-completed-rejected-and-timestamps-3-a-document-upload-section-per-application-where-users-can-upload-files-aadhar-pan-photos-etc-4-a-document-vault-tab-showing-all-previously-uploaded-documents-with-download-links",
-      "title": "Implement a user dashboard page (accessible after Internet Identity login) that shows: (1) A grid of all service icons the user can apply for; (2) A 'My Applications' table showing all submitted applications with current status (Pending / In Progress / Completed / Rejected) and timestamps; (3) A document upload section per application where users can upload files (Aadhar, PAN, photos, etc.); (4) A 'Document Vault' tab showing all previously uploaded documents with download links.",
+      "id": "feature-fix-the-active-submission-count-display-in-the-adminpage-so-that-after-clicking-refresh-the-count-immediately-reflects-the-real-number-of-submitted-applications-instead-of-showing-00-the-count-must-be-derived-directly-from-the-freshly-fetched-application-data",
+      "title": "Fix the active submission count display in the AdminPage so that after clicking Refresh, the count immediately reflects the real number of submitted applications instead of showing '00'. The count must be derived directly from the freshly fetched application data.",
       "reqIds": [
-        "REQ-6"
+        "REQ-2"
       ],
       "version": 1
     },
     {
-      "id": "feature-build-a-service-application-flow-when-a-user-clicks-apply-now-on-any-service-card-open-a-multi-step-form-that-1-collects-applicant-name-phone-number-and-any-service-specific-notes-2-shows-the-current-service-fee-set-by-the-admin-3-presents-a-payment-section-with-the-dynamic-upi-qr-code-pre-filled-with-the-exact-fee-amount-using-upi-deep-link-format-upi-pay-pa-8173064549-okicici-pn-vijayonlinecentre-am-fee-cu-inr-generated-as-a-qr-code-on-screen-4-also-displays-the-uploaded-icici-reference-qr-image-icici-qr-reference-dim-400x400-png-as-a-trust-indicator-with-a-label-official-bank-qr-for-reference-5-on-payment-confirmation-user-clicks-i-have-paid-submit-the-application-to-the-backend-with-status-pending",
-      "title": "Build a service application flow: when a user clicks 'Apply Now' on any service card, open a multi-step form that (1) collects applicant name, phone number, and any service-specific notes; (2) shows the current service fee set by the admin; (3) presents a payment section with the dynamic UPI QR code pre-filled with the exact fee amount using UPI deep-link format: upi://pay?pa=8173064549@okicici&pn=VijayOnlineCentre&am={fee}&cu=INR, generated as a QR code on-screen; (4) also displays the uploaded ICICI reference QR image (icici-qr-reference.dim_400x400.png) as a trust indicator with a label 'Official Bank QR for Reference'; (5) on payment confirmation (user clicks 'I have paid'), submit the application to the backend with status 'Pending'.",
+      "id": "feature-fix-the-set-price-mutation-in-usequeries-ts-and-adminpage-tsx-so-that-submitting-a-fee-e-g-200-does-not-return-an-unauthorized-error-the-admin-actor-must-be-properly-authenticated-before-calling-the-setfee-backend-function-after-a-successful-set-price-call-the-updated-fee-must-be-immediately-visible-to-customers-on-the-dashboardpage-without-requiring-a-page-reload",
+      "title": "Fix the Set Price mutation in useQueries.ts and AdminPage.tsx so that submitting a fee (e.g., 200) does not return an 'Unauthorized' error. The admin actor must be properly authenticated before calling the setFee backend function. After a successful Set Price call, the updated fee must be immediately visible to customers on the DashboardPage without requiring a page reload.",
       "reqIds": [
-        "REQ-7"
+        "REQ-3"
       ],
       "version": 1
     },
     {
-      "id": "feature-build-a-secure-admin-panel-page-protected-by-admin-login-that-includes-1-login-screen-with-username-password-form-2-after-login-a-service-fee-management-table-listing-all-22-services-with-an-editable-fee-field-and-save-button-per-row-3-an-applications-management-table-showing-all-submitted-applications-with-columns-application-id-user-service-status-submitted-date-and-action-buttons-to-update-status-in-progress-completed-rejected-and-add-notes-4-a-documents-viewer-per-application-to-see-uploaded-user-documents",
-      "title": "Build a secure admin panel page (protected by admin login) that includes: (1) Login screen with username/password form; (2) After login: a service fee management table listing all 22 services with an editable fee field and Save button per row; (3) An applications management table showing all submitted applications with columns: Application ID, User, Service, Status, Submitted Date, and action buttons to update status (In Progress / Completed / Rejected) and add notes; (4) A documents viewer per application to see uploaded user documents.",
+      "id": "feature-ensure-the-admin-login-credentials-vijay-123-username-vijay-password-123-and-vijay-2026-username-vijay-password-2026-both-continue-to-work-in-the-useadminauth-ts-hook-do-not-remove-or-alter-these-hardcoded-credentials-the-24-hour-session-stored-in-localstorage-must-remain-intact",
+      "title": "Ensure the admin login credentials vijay@123 (username: vijay, password: 123) and vijay@2026 (username: vijay, password: 2026) both continue to work in the useAdminAuth.ts hook. Do not remove or alter these hardcoded credentials. The 24-hour session stored in localStorage must remain intact.",
       "reqIds": [
-        "REQ-8"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-a-floating-support-bar-fixed-to-the-bottom-right-of-every-page-with-two-buttons-1-a-whatsapp-button-green-with-whatsapp-icon-linking-to-https-wa-me-918173064549-that-opens-whatsapp-chat-2-a-call-us-button-blue-with-phone-icon-linking-to-tel-918173064549-both-buttons-must-be-visible-on-mobile-and-desktop-stacked-vertically-with-a-shadow-and-slight-bounce-animation-on-load",
-      "title": "Add a floating support bar fixed to the bottom-right of every page with two buttons: (1) A WhatsApp button (green, with WhatsApp icon) linking to https://wa.me/918173064549 that opens WhatsApp chat; (2) A 'Call Us' button (blue, with phone icon) linking to tel:+918173064549. Both buttons must be visible on mobile and desktop, stacked vertically, with a shadow and slight bounce animation on load.",
-      "reqIds": [
-        "REQ-9"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-implement-a-floating-ai-chatbot-widget-in-the-bottom-left-corner-of-every-page-it-appears-as-a-chat-bubble-icon-clicking-it-opens-a-chat-panel-the-chatbot-must-1-greet-the-user-in-both-hindi-and-english-2-offer-quick-reply-buttons-for-common-queries-document-requirements-track-application-contact-support-3-allow-free-text-input-4-call-the-backend-chatbot-api-and-display-the-response-5-support-application-status-lookup-by-id-the-chat-panel-must-show-a-vijay-online-centre-assistant-header-and-a-typing-indicator-while-waiting-for-a-response",
-      "title": "Implement a floating AI chatbot widget in the bottom-left corner of every page. It appears as a chat bubble icon; clicking it opens a chat panel. The chatbot must: (1) greet the user in both Hindi and English; (2) offer quick-reply buttons for common queries (Document Requirements, Track Application, Contact Support); (3) allow free-text input; (4) call the backend chatbot API and display the response; (5) support application status lookup by ID. The chat panel must show a 'Vijay Online Centre Assistant' header and a typing indicator while waiting for a response.",
-      "reqIds": [
-        "REQ-10"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-apply-a-cohesive-visual-theme-throughout-the-entire-app-deep-navy-blue-0a1628-as-primary-dark-background-crisp-white-ffffff-for-content-surfaces-electric-blue-1565c0-as-the-primary-action-brand-color-gold-amber-f59e0b-as-accent-for-highlights-and-badges-and-dark-slate-1e293b-for-card-backgrounds-use-bold-sans-serif-typography-inter-or-system-ui-service-category-headers-should-use-colored-left-border-accents-buttons-use-rounded-corners-with-hover-glow-effects-the-overall-feel-should-evoke-a-professional-government-service-center-trustworthy-clear-and-efficient",
-      "title": "Apply a cohesive visual theme throughout the entire app: deep navy blue (#0A1628) as primary dark background, crisp white (#FFFFFF) for content surfaces, electric blue (#1565C0) as the primary action/brand color, gold/amber (#F59E0B) as accent for highlights and badges, and dark slate (#1E293B) for card backgrounds. Use bold sans-serif typography (Inter or system-ui). Service category headers should use colored left-border accents. Buttons use rounded corners with hover glow effects. The overall feel should evoke a professional government service center — trustworthy, clear, and efficient.",
-      "reqIds": [
-        "REQ-11"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-render-the-uploaded-icici-bank-reference-qr-image-and-the-generated-app-logo-as-static-assets-in-the-frontend-the-icici-qr-photo-icici-qr-reference-dim-400x400-png-must-be-placed-in-frontend-public-assets-generated-and-displayed-on-the-payment-screen-the-app-logo-vijay-logo-dim-200x80-png-must-be-displayed-in-the-header",
-      "title": "Render the uploaded ICICI Bank reference QR image and the generated app logo as static assets in the frontend. The ICICI QR photo (icici-qr-reference.dim_400x400.png) must be placed in frontend/public/assets/generated/ and displayed on the payment screen. The app logo (vijay-logo.dim_200x80.png) must be displayed in the header.",
-      "reqIds": [
-        "REQ-12"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-replace-the-existing-icici-bank-reference-qr-image-asset-with-the-newly-uploaded-photo-img-20260226-203309-jpg-the-updated-image-must-be-stored-as-icici-qr-reference-dim-400x400-png-in-frontend-public-assets-generated-and-must-continue-to-be-displayed-on-the-payment-screen-under-the-label-official-bank-qr-for-reference",
-      "title": "Replace the existing ICICI Bank reference QR image asset with the newly uploaded photo (IMG_20260226_203309.jpg). The updated image must be stored as icici-qr-reference.dim_400x400.png in frontend/public/assets/generated/ and must continue to be displayed on the payment screen under the label 'Official Bank QR for Reference'.",
-      "reqIds": [
-        "REQ-13"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-redesign-the-user-side-application-flow-so-that-after-a-customer-clicks-apply-now-fills-in-their-name-and-phone-number-and-submits-the-form-their-request-is-saved-with-status-awaiting-price-not-yet-paid-the-payment-step-must-be-locked-and-display-a-message-such-as-your-request-has-been-received-please-wait-the-admin-will-set-the-fee-and-your-payment-qr-will-appear-here-the-page-must-auto-refresh-or-poll-every-10-seconds-once-the-admin-sets-a-fee-for-that-specific-application-the-dynamic-upi-qr-code-upi-pay-pa-8173064549-okicici-pn-vijayonlinecentre-am-fee-cu-inr-must-appear-on-screen-and-the-user-can-then-proceed-to-pay",
-      "title": "Redesign the User Side application flow so that after a customer clicks 'Apply Now', fills in their name and phone number, and submits the form, their request is saved with status 'Awaiting Price' (not yet paid). The payment step must be locked and display a message such as 'Your request has been received. Please wait — the admin will set the fee and your payment QR will appear here.' The page must auto-refresh or poll every 10 seconds; once the admin sets a fee for that specific application, the dynamic UPI QR code (upi://pay?pa=8173064549@okicici&pn=VijayOnlineCentre&am={fee}&cu=INR) must appear on-screen and the user can then proceed to pay.",
-      "reqIds": [
-        "REQ-14"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-rebuild-the-admin-page-to-be-fully-functional-it-must-include-1-a-login-screen-at-route-admin-with-username-vijay-and-password-authentication-2-after-login-display-an-active-requests-dashboard-tab-that-lists-all-applications-currently-in-awaiting-price-status-showing-each-customer-s-name-phone-number-and-requested-service-name-3-for-each-such-application-provide-a-numeric-input-field-labeled-set-fee-and-a-generate-qr-notify-button-when-the-admin-types-a-fee-and-clicks-the-button-the-fee-is-saved-to-that-application-record-the-application-status-changes-from-awaiting-price-to-price-set-and-a-live-upi-qr-code-is-rendered-in-the-admin-row-for-the-admin-to-confirm-upi-pay-pa-8173064549-okicici-pn-vijayonlinecentre-am-fee-cu-inr-4-keep-the-existing-service-fee-management-table-and-application-status-management-table-in-progress-completed-rejected-in-separate-tabs",
-      "title": "Rebuild the /admin page to be fully functional. It must include: (1) A login screen at route /admin with username 'vijay' and password authentication. (2) After login, display an 'Active Requests' dashboard tab that lists all applications currently in 'Awaiting Price' status, showing each customer's name, phone number, and requested service name. (3) For each such application, provide a numeric input field labeled 'Set Fee (₹)' and a 'Generate QR & Notify' button. When the admin types a fee and clicks the button, the fee is saved to that application record, the application status changes from 'Awaiting Price' to 'Price Set', and a live UPI QR code is rendered in the admin row for the admin to confirm (upi://pay?pa=8173064549@okicici&pn=VijayOnlineCentre&am={fee}&cu=INR). (4) Keep the existing service fee management table and application status management table (In Progress / Completed / Rejected) in separate tabs.",
-      "reqIds": [
-        "REQ-15"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-update-the-admin-authentication-credentials-in-the-backend-so-that-the-only-valid-login-is-username-vijay-123-and-password-vijay-123456-no-access-to-any-admin-dashboard-tab-or-data-must-be-possible-without-successfully-supplying-these-exact-credentials-reject-all-other-username-password-combinations-with-an-appropriate-error-message",
-      "title": "Update the admin authentication credentials in the backend so that the only valid login is username: 'vijay@123' and password: 'vijay@123456'. No access to any admin dashboard tab or data must be possible without successfully supplying these exact credentials. Reject all other username/password combinations with an appropriate error message.",
-      "reqIds": [
-        "REQ-17"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-after-a-customer-clicks-i-have-paid-on-the-payment-screen-do-not-automatically-transition-to-a-success-state-instead-display-the-message-payment-received-waiting-for-vijay-ji-to-verify-with-a-pending-spinner-indicator-the-customer-s-screen-must-remain-in-this-waiting-state-until-the-admin-explicitly-confirms-the-payment-from-the-admin-dashboard-poll-the-backend-every-10-seconds-to-detect-when-the-admin-has-confirmed-the-payment",
-      "title": "After a customer clicks 'I have paid' on the payment screen, do not automatically transition to a success state. Instead, display the message: 'Payment Received. Waiting for Vijay Ji to verify...' with a pending/spinner indicator. The customer's screen must remain in this waiting state until the admin explicitly confirms the payment from the admin dashboard. Poll the backend every 10 seconds to detect when the admin has confirmed the payment.",
-      "reqIds": [
-        "REQ-18"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-a-payments-to-verify-tab-or-prominent-section-in-the-admin-dashboard-that-lists-all-applications-currently-in-paymentpendingverification-status-for-each-such-application-display-customer-name-service-name-and-transaction-id-or-application-id-as-the-reference-provide-a-confirm-done-button-per-row-when-the-admin-clicks-confirm-done-call-the-confirmpayment-backend-function-for-that-application-after-confirmation-the-row-must-disappear-from-this-list-and-the-customer-s-polling-screen-must-eventually-reflect-payment-successful-with-a-receipt-summary-customer-name-service-name-amount-paid-application-id",
-      "title": "Add a 'Payments to Verify' tab (or prominent section) in the admin dashboard that lists all applications currently in 'PaymentPendingVerification' status. For each such application, display: Customer Name, Service Name, and Transaction ID (or application ID as the reference). Provide a 'CONFIRM / DONE' button per row. When the admin clicks 'CONFIRM / DONE', call the `confirmPayment` backend function for that application. After confirmation, the row must disappear from this list and the customer's polling screen must eventually reflect 'Payment Successful ✅' with a receipt summary (Customer Name, Service Name, Amount Paid, Application ID).",
-      "reqIds": [
-        "REQ-20"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-redesign-the-customer-application-flow-paymentpage-apply-now-flow-to-implement-upload-first-pay-later-step-1-after-clicking-apply-now-present-a-form-that-collects-applicant-name-phone-number-service-specific-notes-and-a-document-upload-section-where-the-customer-can-upload-one-or-more-files-aadhar-pan-photos-etc-before-submitting-step-2-on-form-submission-send-the-application-and-uploaded-documents-to-the-backend-the-application-is-saved-with-status-documentsuploaded-step-3-after-submission-display-a-waiting-screen-your-documents-have-been-received-please-wait-the-admin-will-review-and-set-the-fee-your-payment-qr-will-appear-here-once-the-price-is-confirmed-poll-the-backend-every-10-seconds-for-the-application-s-current-status-and-fee-step-4-once-the-backend-status-becomes-priceset-unlock-the-payment-step-and-display-the-dynamic-upi-qr-code-upi-pay-pa-8173064549-okicici-pn-vijayonlinecentre-am-fee-cu-inr-along-with-the-icici-reference-qr-image-icici-qr-reference-dim-400x400-png-labeled-official-bank-qr-for-reference-step-5-when-customer-clicks-i-have-paid-update-the-application-status-to-paymentpendingverification-and-display-payment-received-waiting-for-vijay-ji-to-verify-with-a-spinner-continue-polling-every-10-seconds-until-status-becomes-completed-then-display-payment-successful-with-a-receipt-summary-customer-name-service-name-amount-paid-application-id",
-      "title": "Redesign the customer application flow (PaymentPage / Apply Now flow) to implement 'Upload First, Pay Later': Step 1 — After clicking 'Apply Now', present a form that collects applicant name, phone number, service-specific notes, AND a document upload section where the customer can upload one or more files (Aadhar, PAN, photos, etc.) before submitting. Step 2 — On form submission, send the application and uploaded documents to the backend; the application is saved with status 'DocumentsUploaded'. Step 3 — After submission, display a waiting screen: 'Your documents have been received. Please wait — the admin will review and set the fee. Your payment QR will appear here once the price is confirmed.' Poll the backend every 10 seconds for the application's current status and fee. Step 4 — Once the backend status becomes 'PriceSet', unlock the payment step and display the dynamic UPI QR code (upi://pay?pa=8173064549@okicici&pn=VijayOnlineCentre&am={fee}&cu=INR) along with the ICICI reference QR image (icici-qr-reference.dim_400x400.png) labeled 'Official Bank QR for Reference'. Step 5 — When customer clicks 'I Have Paid', update the application status to 'PaymentPendingVerification' and display: 'Payment Received. Waiting for Vijay Ji to verify...' with a spinner. Continue polling every 10 seconds until status becomes 'Completed', then display 'Payment Successful ✅' with a receipt summary (Customer Name, Service Name, Amount Paid, Application ID).",
-      "reqIds": [
-        "REQ-22"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-update-the-admin-dashboard-page-admin-to-support-the-upload-first-pay-later-flow-add-or-update-an-active-requests-tab-or-rename-the-existing-one-that-shows-all-applications-in-documentsuploaded-status-for-each-application-in-this-tab-display-customer-name-phone-number-service-name-and-a-view-documents-section-that-renders-downloads-all-uploaded-files-aadhar-pan-etc-inline-or-via-download-links-provide-a-numeric-input-labeled-set-fee-and-a-set-price-generate-qr-button-per-row-when-the-admin-enters-a-fee-and-clicks-the-button-call-setapplicationfee-on-the-backend-to-transition-the-application-to-priceset-and-render-a-live-upi-qr-code-in-that-admin-row-for-confirmation-upi-pay-pa-8173064549-okicici-pn-vijayonlinecentre-am-fee-cu-inr-keep-the-existing-payments-to-verify-tab-that-lists-paymentpendingverification-applications-with-a-confirm-done-button-per-row-that-calls-confirmpayment-after-confirmation-the-row-disappears-from-this-list-retain-all-other-existing-tabs-service-fee-management-application-status-management-admin-login-credentials-remain-username-vijay-123-password-vijay-123456",
-      "title": "Update the Admin Dashboard page (/admin) to support the 'Upload First, Pay Later' flow. Add or update an 'Active Requests' tab (or rename the existing one) that shows all applications in 'DocumentsUploaded' status. For each application in this tab, display: Customer Name, Phone Number, Service Name, and a 'View Documents' section that renders/downloads all uploaded files (Aadhar, PAN, etc.) inline or via download links. Provide a numeric input labeled 'Set Fee (₹)' and a 'Set Price & Generate QR' button per row. When the admin enters a fee and clicks the button, call setApplicationFee on the backend to transition the application to 'PriceSet' and render a live UPI QR code in that admin row for confirmation (upi://pay?pa=8173064549@okicici&pn=VijayOnlineCentre&am={fee}&cu=INR). Keep the existing 'Payments to Verify' tab that lists 'PaymentPendingVerification' applications with a 'CONFIRM / DONE' button per row that calls confirmPayment. After confirmation, the row disappears from this list. Retain all other existing tabs (service fee management, application status management). Admin login credentials remain: username 'vijay@123', password 'vijay@123456'.",
-      "reqIds": [
-        "REQ-23"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-in-the-admin-dashboard-active-requests-tab-which-lists-applications-in-documentsuploaded-status-display-two-action-buttons-per-row-confirm-and-reject-the-confirm-button-transitions-the-application-to-awaitingprice-allows-the-admin-to-set-the-fee-and-generates-the-upi-qr-for-the-customer-the-reject-button-calls-the-rejectapplication-backend-function-after-a-successful-call-the-row-is-immediately-removed-from-the-admin-list-the-admin-must-be-able-to-view-all-uploaded-documents-clearly-inline-preview-or-download-links-before-deciding-to-confirm-or-reject",
-      "title": "In the Admin Dashboard 'Active Requests' tab (which lists applications in 'DocumentsUploaded' status), display two action buttons per row: 'CONFIRM' and 'REJECT'. The 'CONFIRM' button transitions the application to 'AwaitingPrice' / allows the admin to set the fee and generates the UPI QR for the customer. The 'REJECT' button calls the rejectApplication backend function; after a successful call, the row is immediately removed from the admin list. The admin must be able to view all uploaded documents clearly (inline preview or download links) before deciding to CONFIRM or REJECT.",
-      "reqIds": [
-        "REQ-26"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-update-the-customer-facing-paymentpage-polling-logic-so-that-when-the-backend-returns-a-rejected-status-for-the-polled-application-the-customer-s-waiting-screen-transitions-to-a-clear-rejection-message-your-request-was-rejected-by-vijay-ji-please-contact-for-details-this-message-must-replace-the-waiting-for-price-spinner-and-must-not-show-any-payment-qr-code",
-      "title": "Update the customer-facing PaymentPage polling logic so that when the backend returns a 'Rejected' status for the polled application, the customer's waiting screen transitions to a clear rejection message: 'Your request was rejected by Vijay Ji. Please contact for details.' This message must replace the 'waiting for price' spinner and must not show any payment QR code.",
-      "reqIds": [
-        "REQ-27"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-enforce-the-confirm-first-payment-qr-reveal-logic-the-customer-must-not-see-the-upi-payment-qr-code-until-the-admin-has-explicitly-clicked-confirm-which-sets-the-fee-and-transitions-the-application-to-priceset-the-customer-s-paymentpage-must-poll-for-status-priceset-before-unlocking-and-displaying-the-dynamic-upi-qr-code-upi-pay-pa-8173064549-okicici-pn-vijayonlinecentre-am-fee-cu-inr-after-the-customer-clicks-i-have-paid-the-status-moves-to-paymentpendingverification-the-admin-s-payments-to-verify-tab-then-shows-a-done-button-per-row-clicking-done-calls-confirmpayment-and-transitions-the-application-to-completed-at-which-point-the-customer-s-screen-shows-payment-successful-with-a-receipt-summary",
-      "title": "Enforce the 'Confirm-First' payment QR reveal logic: the customer must NOT see the UPI payment QR code until the admin has explicitly clicked 'CONFIRM' (which sets the fee and transitions the application to 'PriceSet'). The customer's PaymentPage must poll for status 'PriceSet' before unlocking and displaying the dynamic UPI QR code (upi://pay?pa=8173064549@okicici&pn=VijayOnlineCentre&am={fee}&cu=INR). After the customer clicks 'I Have Paid', the status moves to 'PaymentPendingVerification'. The admin's 'Payments to Verify' tab then shows a 'DONE' button per row; clicking 'DONE' calls confirmPayment and transitions the application to 'Completed', at which point the customer's screen shows 'Payment Successful ✅' with a receipt summary.",
-      "reqIds": [
-        "REQ-28"
+        "REQ-4"
       ],
       "version": 1
     }
@@ -174,170 +50,26 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Floating WhatsApp button and Call Us button linked to +91 81730 64549",
+      "summary": "Fix Refresh button to forcefully re-fetch latest rows from Applications table, working on all mobile browsers including OnePlus",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-2",
-      "summary": "24/7 AI chatbot supporting Hindi and English for document queries and application status tracking",
+      "summary": "Sync active count: clicking Refresh must immediately update '00' to the real number of submissions",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-3",
-      "summary": "Full service grid with icons across Govt IDs, Certificates, Welfare, Finance, Travel & General categories",
+      "summary": "Fix Set Price button so 200 amount is saved and visible to customers immediately, removing Unauthorized errors",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-4",
-      "summary": "Admin panel with secure login for Vijay Ji to set service fees per request",
+      "summary": "Maintain admin login credentials: vijay@123 / vijay@2026",
       "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-5",
-      "summary": "User dashboard with service icons, document upload, and work status tracking",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-6",
-      "summary": "Dynamic QR code payment system using ICICI UPI (8173064549@okicici) with fee-locked amount and reference ICICI QR display",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-7",
-      "summary": "Secure Document Vault for users to store and retrieve uploaded files",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-8",
-      "summary": "Create the backend data model and actor with the following entities: (1) Services – id, name, category (GovtID | Certificate | Welfare | Finance | Travel), icon name, description; (2) ServiceFees – serviceId, fee (Nat); (3) Applications – id, userId, serviceId, status (Pending | InProgress | Completed | Rejected), submittedAt, updatedAt, notes; (4) Documents – id, userId, applicationId (optional), fileName, fileData (Blob), uploadedAt; (5) AdminCredentials – hashed password storage. Expose CRUD endpoints for all entities, plus getApplicationsByUser, updateApplicationStatus (admin only), setServiceFee (admin only), getUserDocuments, and uploadDocument.",
-      "reqIds": [
-        "REQ-1"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-9",
-      "summary": "Build a full service catalog in the backend with all 22 services pre-seeded across five categories: Govt IDs (Aadhar Correction/Link, PAN Card, Voter ID, Ration Card, Shramik Card); Certificates (Income/Aay, Caste/Jati, Niwas, Character, Birth & Death); Welfare (Vridha Pension, Vidhwa Pension, Shadi Anudan, Scholarship, Sumangala Yojana); Finance (ITR Filing, GST Registration/Return, PF Withdrawal, Money Transfer); Travel & General (Bijli Bill, New Connection, Railway Tickets, PVC Printing).",
-      "reqIds": [
-        "REQ-2"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-10",
-      "summary": "Implement a secure admin authentication system in the backend. Admin logs in with a hardcoded username 'vijay' and a secure password. The backend must return a session token on success. All fee-setting and status-update endpoints must validate the admin token before executing.",
-      "reqIds": [
-        "REQ-3"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-11",
-      "summary": "Build a rule-based AI chatbot engine in the backend that handles common queries in both Hindi and English. The chatbot must: (1) Answer document requirement questions for all 22 services (e.g., 'What documents are needed for PAN Card?'); (2) Allow users to check their application status by providing an application ID; (3) Respond in the same language the user writes in (Hindi/English detection). Store a knowledge base of document requirements per service inside the actor.",
-      "reqIds": [
-        "REQ-4"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-12",
-      "summary": "User Side: customers select a service and wait for the admin to set/confirm the price before payment",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-13",
-      "summary": "Functional /admin login page: admin can log in, view customer names and their service requests, manually type a price per customer that dynamically generates the UPI QR code for that customer",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-16",
-      "summary": "Update the backend Motoko actor to support the new per-application fee and wait-for-price workflow. Add the following to the data model and API: (1) An 'AwaitingPrice' application status variant alongside existing statuses. (2) A 'price' field (optional Nat) on the Application record. (3) A new update function `setApplicationFee(appId: Text, fee: Nat, adminToken: Text) : async Bool` that validates the admin token, sets the fee on the given application, and transitions its status to 'PriceSet'. (4) A new query `getApplicationById(appId: Text) : async ?Application` so the frontend can poll for fee updates. (5) A new query `getPendingPriceApplications(adminToken: Text) : async [Application]` that returns all applications with 'AwaitingPrice' status for the admin dashboard.",
-      "reqIds": [
-        "REQ-16"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-17",
-      "summary": "Update admin login credentials: username = vijay@123, password = vijay@123456. No access to dashboard without successful login.",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-18",
-      "summary": "Manual payment verification flow: after customer pays, show 'Payment Received. Waiting for Vijay Ji to verify...' instead of auto-success. Only after admin clicks CONFIRM/DONE button does customer screen change to 'Payment Successful ✅' with receipt.",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-19",
-      "summary": "Admin dashboard: show a CONFIRM/DONE button per request. Display Customer Name, Service Name, and Transaction ID in the list so admin can verify before confirming payment.",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-22",
-      "summary": "Add a new application status variant 'PaymentPendingVerification' to the backend Motoko actor to represent the state after a customer has claimed to pay but before the admin has confirmed. When the customer clicks 'I have paid', update the application status to 'PaymentPendingVerification'. Add a new update function `confirmPayment(appId: Text, adminToken: Text) : async Bool` that validates the admin token and transitions the application status from 'PaymentPendingVerification' to 'Completed'.",
-      "reqIds": [
-        "REQ-19"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-23",
-      "summary": "Implement 'Upload First, Pay Later' flow: Step 1 – customer selects service and uploads documents (Aadhar, PAN, etc.) before any payment step. Step 2 – uploaded documents and request appear in Admin Dashboard. Step 3 – admin reviews documents and manually sets the price for that customer. Step 4 – only after admin sets price does the UPI/QR payment appear on the customer's screen. Step 5 – after customer pays, admin clicks DONE to show 'Payment Successful' to the customer.",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-24",
-      "summary": "Update the backend Motoko actor to support the 'Upload First, Pay Later' flow. The application status lifecycle must be: DocumentsUploaded → AwaitingPrice → PriceSet → PaymentPendingVerification → Completed. Add (or update) the following: (1) A 'DocumentsUploaded' status variant that is the initial status when a customer submits their application along with document uploads. (2) Ensure documents can be attached to an application at submission time (store file name + blob per document, linked to the applicationId). (3) Retain 'AwaitingPrice', 'PriceSet', 'PaymentPendingVerification', and 'Completed' status variants. (4) A query `getApplicationsByStatus(status: Text, adminToken: Text) : async [Application]` (or update existing queries) so the admin can fetch all applications in 'DocumentsUploaded' status. (5) Keep `setApplicationFee`, `getApplicationById`, `confirmPayment`, and document-related functions intact and compatible with the new status flow. Admin credentials remain username: 'vijay@123', password: 'vijay@123456'.",
-      "reqIds": [
-        "REQ-21"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-25",
-      "summary": "Fix admin login: force reset credentials to vijay@123 / vijay@123456 with full dashboard access. Currently getting 'Unauthorized' and 'Invalid' errors.",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-26",
-      "summary": "Add CONFIRM and REJECT buttons per request in Admin Dashboard. REJECT deletes the request from admin list and shows customer: 'Your request was rejected by Vijay Ji. Please contact for details.' CONFIRM causes payment QR to appear to the customer. After customer pays, admin clicks DONE to complete order.",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-27",
-      "summary": "Admin must be able to clearly view uploaded documents (Aadhar, PAN, etc.) inline before choosing to CONFIRM or REJECT a request.",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-28",
-      "summary": "Force-reset the admin authentication logic in the backend so that the ONLY valid credentials are username 'vijay@123' and password 'vijay@123456'. Remove or replace any existing credential-check code that may be causing 'Unauthorized' or 'Invalid' errors. The adminLogin function must return a valid session token on success and a clear error message on failure. All protected admin endpoints (setApplicationFee, confirmPayment, getApplicationsByStatus, updateApplicationStatus, etc.) must accept and validate this token correctly.",
-      "reqIds": [
-        "REQ-24"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-29",
-      "summary": "Add a 'rejectApplication' backend function: rejectApplication(appId: Text, adminToken: Text) : async Bool. This function must validate the admin token, delete (or permanently remove) the application record from the data store, and set a rejection flag or store a rejection message ('Your request was rejected by Vijay Ji. Please contact for details.') retrievable by the customer's polling mechanism. If the application cannot be found or the token is invalid, return false.",
-      "reqIds": [
-        "REQ-25"
-      ],
       "status": "pending"
     }
   ],

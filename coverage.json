@@ -1,32 +1,31 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-27T16:52:58.339Z",
+  "generatedAt": "2026-02-28T16:51:14.512Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 5,
-    "implemented": 3,
+    "total": 4,
+    "implemented": 4,
     "items": [
       {
-        "id": "REQ-24",
-        "summary": "Force-reset the admin authentication logic in the backend so that the ONLY valid credentials are username 'vijay@123' and password 'vijay@123456'. Remove or replace any existing credential-check code that may be causing 'Unauthorized' or 'Invalid' errors. The adminLogin function must return a valid session token on success and a clear error message on failure. All protected admin endpoints (setApplicationFee, confirmPayment, getApplicationsByStatus, updateApplicationStatus, etc.) must accept and validate this token correctly.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
+        "id": "REQ-1",
+        "summary": "Rewrite the Refresh button handler in AdminPage.tsx to forcefully invalidate and re-fetch all application data from the backend (bypassing any cache). The refetch must use React Query's refetch with staleTime=0 and must work correctly on all mobile browsers including Chrome on OnePlus/Android devices. After clicking Refresh, the application list must visibly update with the latest rows from the Applications table.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/AdminPage.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/AdminPage.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ]
       },
       {
-        "id": "REQ-25",
-        "summary": "Add a 'rejectApplication' backend function: rejectApplication(appId: Text, adminToken: Text) : async Bool. This function must validate the admin token, delete (or permanently remove) the application record from the data store, and set a rejection flag or store a rejection message ('Your request was rejected by Vijay Ji. Please contact for details.') retrievable by the customer's polling mechanism. If the application cannot be found or the token is invalid, return false.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-26",
-        "summary": "In the Admin Dashboard 'Active Requests' tab (which lists applications in 'DocumentsUploaded' status), display two action buttons per row: 'CONFIRM' and 'REJECT'. The 'CONFIRM' button transitions the application to 'AwaitingPrice' / allows the admin to set the fee and generates the UPI QR for the customer. The 'REJECT' button calls the rejectApplication backend function; after a successful call, the row is immediately removed from the admin list. The admin must be able to view all uploaded documents clearly (inline preview or download links) before deciding to CONFIRM or REJECT.",
+        "id": "REQ-2",
+        "summary": "Fix the active submission count display in the AdminPage so that after clicking Refresh, the count immediately reflects the real number of submitted applications instead of showing '00'. The count must be derived directly from the freshly fetched application data.",
         "status": "implemented",
         "plannedFiles": [
           "frontend/src/pages/AdminPage.tsx"
@@ -36,45 +35,45 @@
         ]
       },
       {
-        "id": "REQ-27",
-        "summary": "Update the customer-facing PaymentPage polling logic so that when the backend returns a 'Rejected' status for the polled application, the customer's waiting screen transitions to a clear rejection message: 'Your request was rejected by Vijay Ji. Please contact for details.' This message must replace the 'waiting for price' spinner and must not show any payment QR code.",
+        "id": "REQ-3",
+        "summary": "Fix the Set Price mutation in useQueries.ts and AdminPage.tsx so that submitting a fee (e.g., 200) does not return an 'Unauthorized' error. The admin actor must be properly authenticated before calling the setFee backend function. After a successful Set Price call, the updated fee must be immediately visible to customers on the DashboardPage without requiring a page reload.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/PaymentPage.tsx"
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/pages/AdminPage.tsx",
+          "frontend/src/pages/DashboardPage.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/pages/PaymentPage.tsx"
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/pages/AdminPage.tsx",
+          "frontend/src/pages/DashboardPage.tsx"
         ]
       },
       {
-        "id": "REQ-28",
-        "summary": "Enforce the 'Confirm-First' payment QR reveal logic: the customer must NOT see the UPI payment QR code until the admin has explicitly clicked 'CONFIRM' (which sets the fee and transitions the application to 'PriceSet'). The customer's PaymentPage must poll for status 'PriceSet' before unlocking and displaying the dynamic UPI QR code (upi://pay?pa=8173064549@okicici&pn=VijayOnlineCentre&am={fee}&cu=INR). After the customer clicks 'I Have Paid', the status moves to 'PaymentPendingVerification'. The admin's 'Payments to Verify' tab then shows a 'DONE' button per row; clicking 'DONE' calls confirmPayment and transitions the application to 'Completed', at which point the customer's screen shows 'Payment Successful ✅' with a receipt summary.",
+        "id": "REQ-4",
+        "summary": "Ensure the admin login credentials vijay@123 (username: vijay, password: 123) and vijay@2026 (username: vijay, password: 2026) both continue to work in the useAdminAuth.ts hook. Do not remove or alter these hardcoded credentials. The 24-hour session stored in localStorage must remain intact.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/PaymentPage.tsx",
-          "frontend/src/pages/AdminPage.tsx"
+          "frontend/src/hooks/useAdminAuth.ts"
         ],
         "matchedFiles": [
-          "frontend/src/pages/PaymentPage.tsx",
-          "frontend/src/pages/AdminPage.tsx"
+          "frontend/src/hooks/useAdminAuth.ts"
         ]
       }
     ]
   },
   "changedFiles": [
     "backend/main.mo",
-    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
+    "frontend/src/App.tsx",
+    "frontend/src/components/AdminLoginModal.tsx",
+    "frontend/src/hooks/useAdminAuth.ts",
     "frontend/src/hooks/useQueries.ts",
     "frontend/src/pages/AdminPage.tsx",
-    "frontend/src/pages/PaymentPage.tsx",
+    "frontend/src/pages/DashboardPage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

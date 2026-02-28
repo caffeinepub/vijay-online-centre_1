@@ -1,256 +1,255 @@
-import { useState } from 'react';
-import { Search, ChevronRight, Star, Users, FileCheck, Clock } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { useServices, type Service } from '../hooks/useQueries';
-import { type Page } from '../App';
+import React, { useState } from "react";
+import {
+  FileText, CreditCard, Globe, Users, Home, Briefcase,
+  Building, ShoppingBag, Heart, GraduationCap,
+  Landmark, Leaf, Shield, Star, Search, Train, Bus,
+} from "lucide-react";
+import { useCustomerAuth } from "../hooks/useCustomerAuth";
+import CustomerAuthModal from "../components/CustomerAuthModal";
 
 interface HomePageProps {
-  navigate: (page: Page, service?: Service) => void;
+  onNavigate: (page: string, service?: string) => void;
 }
 
-const CATEGORY_CONFIG = {
-  GovtID: {
-    label: 'Government IDs',
-    labelHindi: 'सरकारी आईडी',
-    borderClass: 'category-border-blue',
-    badgeStyle: { background: 'oklch(0.45 0.18 250 / 0.1)', color: 'oklch(0.35 0.16 250)' },
-    emoji: '🪪',
-  },
-  Certificate: {
-    label: 'Certificates',
-    labelHindi: 'प्रमाण पत्र',
-    borderClass: 'category-border-gold',
-    badgeStyle: { background: 'oklch(0.75 0.15 60 / 0.1)', color: 'oklch(0.55 0.18 55)' },
-    emoji: '📄',
-  },
-  Welfare: {
-    label: 'Welfare Schemes',
-    labelHindi: 'कल्याण योजनाएं',
-    borderClass: 'category-border-green',
-    badgeStyle: { background: 'oklch(0.55 0.18 145 / 0.1)', color: 'oklch(0.4 0.18 145)' },
-    emoji: '🤝',
-  },
-  Finance: {
-    label: 'Finance Services',
-    labelHindi: 'वित्त सेवाएं',
-    borderClass: 'category-border-orange',
-    badgeStyle: { background: 'oklch(0.65 0.2 30 / 0.1)', color: 'oklch(0.5 0.2 30)' },
-    emoji: '💰',
-  },
-  Travel: {
-    label: 'Travel & General',
-    labelHindi: 'यात्रा और सामान्य',
-    borderClass: 'category-border-purple',
-    badgeStyle: { background: 'oklch(0.5 0.15 300 / 0.1)', color: 'oklch(0.4 0.15 300)' },
-    emoji: '✈️',
-  },
-};
-
-const STATS = [
-  { icon: Users, value: '10,000+', label: 'Happy Customers', labelHindi: 'संतुष्ट ग्राहक' },
-  { icon: FileCheck, value: '22+', label: 'Services', labelHindi: 'सेवाएं' },
-  { icon: Star, value: '4.9★', label: 'Rating', labelHindi: 'रेटिंग' },
-  { icon: Clock, value: '24/7', label: 'Support', labelHindi: 'सहायता' },
+const ALL_SERVICES = [
+  // Government ID
+  { id: 1, name: "Aadhaar Update", icon: Shield, category: "Government ID" },
+  { id: 2, name: "PAN Card", icon: CreditCard, category: "Government ID" },
+  { id: 3, name: "Passport", icon: Globe, category: "Government ID" },
+  { id: 4, name: "Voter ID", icon: Users, category: "Government ID" },
+  { id: 5, name: "Driving Licence", icon: FileText, category: "Government ID" },
+  { id: 6, name: "Ration Card", icon: Home, category: "Government ID" },
+  // Certificates
+  { id: 7, name: "Income Certificate", icon: FileText, category: "Certificates" },
+  { id: 8, name: "Caste Certificate", icon: FileText, category: "Certificates" },
+  { id: 9, name: "Residence Certificate", icon: Home, category: "Certificates" },
+  { id: 10, name: "Birth Certificate", icon: Star, category: "Certificates" },
+  { id: 11, name: "Death Certificate", icon: FileText, category: "Certificates" },
+  { id: 12, name: "Marriage Certificate", icon: Heart, category: "Certificates" },
+  // Land & Property
+  { id: 13, name: "Land Records", icon: Landmark, category: "Land & Property" },
+  { id: 14, name: "Property Registration", icon: Building, category: "Land & Property" },
+  // Government Schemes
+  { id: 15, name: "NREGA Job Card", icon: Leaf, category: "Government Schemes" },
+  { id: 16, name: "PM Kisan", icon: Leaf, category: "Government Schemes" },
+  { id: 17, name: "Ayushman Bharat", icon: Heart, category: "Government Schemes" },
+  { id: 18, name: "Scholarship Application", icon: GraduationCap, category: "Government Schemes" },
+  // Tax & Business
+  { id: 19, name: "ITR Filing", icon: FileText, category: "Tax & Business" },
+  { id: 20, name: "GST Registration", icon: Briefcase, category: "Tax & Business" },
+  { id: 21, name: "Udyam Registration", icon: Briefcase, category: "Tax & Business" },
+  { id: 22, name: "MSME Certificate", icon: Building, category: "Tax & Business" },
+  { id: 23, name: "Shop & Establishment", icon: ShoppingBag, category: "Tax & Business" },
+  { id: 24, name: "FSSAI Licence", icon: Shield, category: "Tax & Business" },
+  { id: 25, name: "Trade Licence", icon: Briefcase, category: "Tax & Business" },
+  // Banking & Financial
+  { id: 26, name: "Bank Account Opening", icon: Landmark, category: "Banking & Financial" },
+  { id: 27, name: "Loan Application", icon: CreditCard, category: "Banking & Financial" },
+  { id: 28, name: "Insurance", icon: Shield, category: "Banking & Financial" },
+  { id: 29, name: "Pension", icon: Star, category: "Banking & Financial" },
+  { id: 30, name: "EPF/PF Services", icon: Briefcase, category: "Banking & Financial" },
+  // Travel
+  { id: 31, name: "Railway Ticket Booking", icon: Train, category: "Travel" },
+  { id: 32, name: "Bus Ticket Booking", icon: Bus, category: "Travel" },
 ];
 
-export default function HomePage({ navigate }: HomePageProps) {
-  const { data: services = [], isLoading } = useServices();
-  const [search, setSearch] = useState('');
+const CATEGORIES = ["All", ...Array.from(new Set(ALL_SERVICES.map((s) => s.category)))];
 
-  const filteredServices = search
-    ? services.filter(s =>
-        s.name.toLowerCase().includes(search.toLowerCase()) ||
-        s.nameHindi.includes(search) ||
-        s.description.toLowerCase().includes(search.toLowerCase())
-      )
-    : services;
+const CATEGORY_COLORS: Record<string, string> = {
+  "Government ID": "bg-blue-50 border-blue-200",
+  "Certificates": "bg-green-50 border-green-200",
+  "Land & Property": "bg-amber-50 border-amber-200",
+  "Government Schemes": "bg-purple-50 border-purple-200",
+  "Tax & Business": "bg-orange-50 border-orange-200",
+  "Banking & Financial": "bg-teal-50 border-teal-200",
+  "Travel": "bg-rose-50 border-rose-200",
+};
 
-  const categories = ['GovtID', 'Certificate', 'Welfare', 'Finance', 'Travel'] as const;
+const ICON_COLORS: Record<string, string> = {
+  "Government ID": "text-blue-600",
+  "Certificates": "text-green-600",
+  "Land & Property": "text-amber-600",
+  "Government Schemes": "text-purple-600",
+  "Tax & Business": "text-orange-600",
+  "Banking & Financial": "text-teal-600",
+  "Travel": "text-rose-600",
+};
+
+export default function HomePage({ onNavigate }: HomePageProps) {
+  const { isAuthenticated, name } = useCustomerAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [pendingService, setPendingService] = useState<string | null>(null);
+
+  const filteredServices = ALL_SERVICES.filter((service) => {
+    const matchesCategory =
+      selectedCategory === "All" || service.category === selectedCategory;
+    const matchesSearch = service.name
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  const handleServiceClick = (serviceName: string) => {
+    if (!isAuthenticated) {
+      setPendingService(serviceName);
+      setShowAuthModal(true);
+    } else {
+      onNavigate("payment", serviceName);
+    }
+  };
+
+  const handleAuthenticated = () => {
+    setShowAuthModal(false);
+    if (pendingService) {
+      onNavigate("payment", pendingService);
+      setPendingService(null);
+    }
+  };
 
   return (
-    <div>
-      {/* Hero Section */}
-      <section
-        className="relative overflow-hidden py-16 md:py-24"
-        style={{ background: 'linear-gradient(135deg, oklch(0.10 0.06 250) 0%, oklch(0.18 0.08 250) 50%, oklch(0.12 0.05 260) 100%)' }}
-      >
-        {/* Background image overlay */}
-        <div className="absolute inset-0 opacity-10">
-          <img
-            src="/assets/generated/hero-banner.dim_1200x400.png"
-            alt=""
-            className="w-full h-full object-cover"
-          />
-        </div>
-
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-6"
-            style={{ background: 'oklch(0.75 0.15 60 / 0.15)', color: 'oklch(0.75 0.15 60)' }}>
-            <Star size={14} className="fill-current" />
-            Trusted Government Service Center
-          </div>
-
-          <h1 className="font-heading font-bold text-3xl sm:text-4xl md:text-5xl text-white mb-3 leading-tight">
+    <div className="min-h-screen bg-gray-50">
+      {/* Hero Banner */}
+      <section className="py-8 px-4 text-white" style={{ backgroundColor: "#002147" }}>
+        <div className="max-w-5xl mx-auto text-center">
+          <h1 className="text-2xl md:text-3xl font-bold mb-2">
             Vijay Online Centre
           </h1>
-          <p className="text-xl md:text-2xl font-medium mb-2" style={{ color: 'oklch(0.75 0.15 60)' }}>
-            विजय ऑनलाइन सेंटर
+          <p className="text-blue-200 text-sm md:text-base mb-4">
+            Your trusted partner for all government &amp; banking services
           </p>
-          <p className="text-white/70 text-base md:text-lg max-w-2xl mx-auto mb-8">
-            All government documents & certificates at your doorstep.
-            <br />
-            <span className="text-white/50 text-sm">सभी सरकारी दस्तावेज और प्रमाण पत्र एक ही जगह।</span>
-          </p>
+          {isAuthenticated && name && (
+            <p className="text-yellow-300 text-sm font-medium">
+              Welcome back, {name}! 👋
+            </p>
+          )}
+          <div className="flex justify-center gap-3 mt-4">
+            <button
+              onClick={() =>
+                isAuthenticated ? onNavigate("payment") : setShowAuthModal(true)
+              }
+              className="bg-white font-bold px-5 py-2.5 rounded-lg hover:bg-blue-50 transition-colors text-sm"
+              style={{ color: "#002147" }}
+            >
+              Apply Now →
+            </button>
+            <button
+              onClick={() => onNavigate("dashboard")}
+              className="border-2 border-white text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-blue-800 transition-colors text-sm"
+            >
+              Track Application
+            </button>
+          </div>
+        </div>
+      </section>
 
-          {/* Search */}
-          <div className="max-w-lg mx-auto relative mb-10">
-            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
+      {/* Search & Filter */}
+      <section className="bg-white border-b shadow-sm sticky top-0 z-10">
+        <div className="max-w-6xl mx-auto px-4 py-3 space-y-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search services... / सेवा खोजें..."
-              className="w-full pl-11 pr-4 py-3.5 rounded-xl text-sm outline-none transition-all"
-              style={{
-                background: 'oklch(1 0 0 / 0.1)',
-                border: '1px solid oklch(1 0 0 / 0.2)',
-                color: 'white',
-              }}
+              placeholder="Search services..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
-            {STATS.map(stat => (
-              <div key={stat.label} className="text-center p-4 rounded-xl" style={{ background: 'oklch(1 0 0 / 0.08)' }}>
-                <stat.icon size={20} className="mx-auto mb-2" style={{ color: 'oklch(0.75 0.15 60)' }} />
-                <p className="font-heading font-bold text-xl text-white">{stat.value}</p>
-                <p className="text-xs text-white/60">{stat.label}</p>
-                <p className="text-xs text-white/40">{stat.labelHindi}</p>
-              </div>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                  selectedCategory === cat
+                    ? "text-white border-transparent"
+                    : "bg-white text-gray-600 border-gray-300 hover:border-blue-400"
+                }`}
+                style={
+                  selectedCategory === cat
+                    ? { backgroundColor: "#002147", borderColor: "#002147" }
+                    : {}
+                }
+              >
+                {cat}
+              </button>
             ))}
           </div>
         </div>
       </section>
 
       {/* Services Grid */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
-        {search && (
-          <div className="mb-8">
-            <h2 className="font-heading font-bold text-xl mb-1">
-              Search Results for "{search}"
-            </h2>
-            <p className="text-sm text-muted-foreground">{filteredServices.length} services found</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-4">
-              {filteredServices.map(service => (
-                <ServiceCard key={service.id} service={service} onApply={() => navigate('payment', service)} />
-              ))}
-            </div>
+      <main className="max-w-6xl mx-auto px-4 py-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-gray-800">
+            {selectedCategory === "All" ? "All Services" : selectedCategory}
+            <span className="ml-2 text-sm font-normal text-gray-500">
+              ({filteredServices.length})
+            </span>
+          </h2>
+        </div>
+
+        {filteredServices.length === 0 ? (
+          <div className="text-center py-12 text-gray-400">
+            <Search className="w-10 h-10 mx-auto mb-3 opacity-40" />
+            <p>No services found for &quot;{searchQuery}&quot;</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+            {filteredServices.map((service) => {
+              const Icon = service.icon;
+              const colorClass = ICON_COLORS[service.category] || "text-blue-600";
+              const cardClass =
+                CATEGORY_COLORS[service.category] ||
+                "bg-gray-50 border-gray-200";
+              return (
+                <button
+                  key={service.id}
+                  onClick={() => handleServiceClick(service.name)}
+                  className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all hover:shadow-md hover:scale-105 active:scale-95 text-center ${cardClass}`}
+                >
+                  <Icon className={`w-6 h-6 ${colorClass}`} />
+                  <span className="text-xs font-medium leading-tight text-gray-700">
+                    {service.name}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         )}
 
-        {!search && categories.map(cat => {
-          const catServices = services.filter(s => s.category === cat);
-          const config = CATEGORY_CONFIG[cat];
-          return (
-            <div key={cat} className="mb-12">
-              <div className={`flex items-center gap-3 mb-6 pl-4 py-2 rounded-r-lg ${config.borderClass}`}
-                style={{ background: 'oklch(0.97 0.005 240)' }}>
-                <span className="text-2xl">{config.emoji}</span>
-                <div>
-                  <h2 className="font-heading font-bold text-xl text-foreground">{config.label}</h2>
-                  <p className="text-sm text-muted-foreground">{config.labelHindi}</p>
-                </div>
-                <span className="ml-auto text-sm font-medium px-3 py-1 rounded-full" style={config.badgeStyle}>
-                  {catServices.length} services
-                </span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {isLoading
-                  ? Array.from({ length: 5 }).map((_, i) => <ServiceCardSkeleton key={i} />)
-                  : catServices.map(service => (
-                      <ServiceCard key={service.id} service={service} onApply={() => navigate('payment', service)} />
-                    ))
-                }
-              </div>
-            </div>
-          );
-        })}
-      </section>
-
-      {/* CTA Banner */}
-      <section className="mx-4 sm:mx-6 mb-12 rounded-2xl overflow-hidden">
-        <div
-          className="p-8 md:p-12 text-center text-white"
-          style={{ background: 'linear-gradient(135deg, oklch(0.35 0.16 250) 0%, oklch(0.45 0.18 250) 100%)' }}
-        >
-          <h2 className="font-heading font-bold text-2xl md:text-3xl mb-3">
-            Need Help? We're Here 24/7
-          </h2>
-          <p className="text-white/80 mb-6">
-            Call or WhatsApp us for instant assistance with any government service.
-            <br />
-            <span className="text-white/60 text-sm">किसी भी सरकारी सेवा के लिए तुरंत सहायता के लिए कॉल या WhatsApp करें।</span>
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <a
-              href="tel:+918173064549"
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all hover:scale-105"
-              style={{ background: 'oklch(0.75 0.15 60)', color: 'oklch(0.12 0.06 250)' }}
-            >
-              📞 +91 81730 64549
-            </a>
-            <a
-              href="https://wa.me/918173064549"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm bg-white/15 hover:bg-white/25 transition-all hover:scale-105"
-            >
-              💬 WhatsApp Chat
-            </a>
-          </div>
+        <div className="mt-6 text-center text-xs text-gray-400">
+          Showing {filteredServices.length} of {ALL_SERVICES.length} services
         </div>
-      </section>
-    </div>
-  );
-}
+      </main>
 
-function ServiceCard({ service, onApply }: { service: Service; onApply: () => void }) {
-  return (
-    <div
-      className="bg-card rounded-xl p-4 border border-border card-hover cursor-pointer group"
-      onClick={onApply}
-    >
-      <div className="text-3xl mb-3 text-center">{service.icon}</div>
-      <h3 className="font-semibold text-sm text-center text-foreground leading-tight mb-1">
-        {service.name}
-      </h3>
-      <p className="text-xs text-center text-muted-foreground mb-3">{service.nameHindi}</p>
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-bold" style={{ color: 'oklch(0.45 0.18 250)' }}>
-          ₹{service.fee}
-        </span>
-        <span
-          className="text-xs font-semibold px-2 py-1 rounded-lg flex items-center gap-1 text-white transition-all group-hover:gap-2"
-          style={{ background: 'oklch(0.45 0.18 250)' }}
+      {/* Footer */}
+      <footer className="py-6 px-4 mt-8 text-center text-xs text-gray-400">
+        © {new Date().getFullYear()} Vijay Online Centre · Built with ❤️ using{" "}
+        <a
+          href={`https://caffeine.ai/?utm_source=Caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(
+            window.location.hostname || "vijay-online-centre"
+          )}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-gray-600"
         >
-          Apply <ChevronRight size={10} />
-        </span>
-      </div>
-    </div>
-  );
-}
+          caffeine.ai
+        </a>
+      </footer>
 
-function ServiceCardSkeleton() {
-  return (
-    <div className="bg-card rounded-xl p-4 border border-border animate-pulse">
-      <div className="w-10 h-10 rounded-full bg-muted mx-auto mb-3" />
-      <div className="h-3 bg-muted rounded mx-auto w-3/4 mb-2" />
-      <div className="h-2 bg-muted rounded mx-auto w-1/2 mb-3" />
-      <div className="flex justify-between">
-        <div className="h-3 bg-muted rounded w-10" />
-        <div className="h-6 bg-muted rounded w-14" />
-      </div>
+      {showAuthModal && (
+        <CustomerAuthModal
+          isOpen={showAuthModal}
+          onClose={() => {
+            setShowAuthModal(false);
+            setPendingService(null);
+          }}
+          onAuthenticated={handleAuthenticated}
+        />
+      )}
     </div>
   );
 }

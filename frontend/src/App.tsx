@@ -1,83 +1,112 @@
-import { useState } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from '@/components/ui/sonner';
-import Header from './components/Header';
-import Footer from './components/Footer';
-import HomePage from './pages/HomePage';
-import PaymentPage from './pages/PaymentPage';
-import DashboardPage from './pages/DashboardPage';
-import AdminPage from './pages/AdminPage';
-import FloatingSupport from './components/FloatingSupport';
-import ChatbotWidget from './components/ChatbotWidget';
-import { type Service } from './hooks/useQueries';
-
-export type Page = 'home' | 'payment' | 'dashboard' | 'admin';
-
-export interface AppState {
-  currentPage: Page;
-  selectedService: Service | null;
-  userId: string;
-}
+import React, { useState, useEffect } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/sonner";
+import Header from "./components/Header";
+import FloatingSupport from "./components/FloatingSupport";
+import HomePage from "./pages/HomePage";
+import PaymentPage from "./pages/PaymentPage";
+import DashboardPage from "./pages/DashboardPage";
+import AdminPage from "./pages/AdminPage";
+import AdminLoginModal from "./components/AdminLoginModal";
+import { useAdminAuth } from "./hooks/useAdminAuth";
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 2,
-      staleTime: 30_000,
+      retry: 1,
+      staleTime: 30000,
     },
   },
 });
 
+type Page = "home" | "payment" | "dashboard" | "admin";
+
 function AppContent() {
-  const [currentPage, setCurrentPage] = useState<Page>(() => {
-    if (window.location.pathname === '/admin') return 'admin';
-    return 'home';
-  });
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [currentPage, setCurrentPage] = useState<Page>("home");
+  const [selectedService, setSelectedService] = useState<string>("");
+  const [activeAppId, setActiveAppId] = useState<string>("");
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
 
-  const [userId] = useState(() => {
-    const stored = localStorage.getItem('vijay_user_id');
-    if (stored) return stored;
-    const id = `user-${Date.now()}-${Math.random().toString(36).substr(2, 8)}`;
-    localStorage.setItem('vijay_user_id', id);
-    return id;
-  });
+  const { isAdminAuthenticated, logout } = useAdminAuth();
 
-  const navigate = (page: Page, service?: Service) => {
-    setCurrentPage(page);
-    if (service) setSelectedService(service);
-    if (page === 'admin') {
-      window.history.pushState({}, '', '/admin');
-    } else if (page === 'home') {
-      window.history.pushState({}, '', '/');
+  const handleNavigate = (page: string, service?: string) => {
+    if (page === "admin") {
+      if (!isAdminAuthenticated) {
+        setShowAdminLogin(true);
+        return;
+      }
+      setCurrentPage("admin");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setCurrentPage(page as Page);
+    if (service) setSelectedService(service);
+    else if (page !== "payment") setSelectedService("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  const handlePaymentSuccess = (appId: string) => {
+    setActiveAppId(appId);
+    setCurrentPage("dashboard");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleAdminLoginSuccess = () => {
+    setShowAdminLogin(false);
+    setCurrentPage("admin");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleAdminLogout = () => {
+    logout();
+    setCurrentPage("home");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // If on admin page but session expired, redirect to home
+  useEffect(() => {
+    if (currentPage === "admin" && !isAdminAuthenticated) {
+      setCurrentPage("home");
+    }
+  }, [currentPage, isAdminAuthenticated]);
+
+  const isAdminPage = currentPage === "admin";
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header currentPage={currentPage} navigate={navigate} />
-      <main className="flex-1">
-        {currentPage === 'home' && (
-          <HomePage navigate={navigate} />
+      {!isAdminPage && (
+        <Header currentPage={currentPage} onNavigate={handleNavigate} />
+      )}
+
+      <div className="flex-1">
+        {currentPage === "home" && (
+          <HomePage onNavigate={handleNavigate} />
         )}
-        {currentPage === 'payment' && (
+        {currentPage === "payment" && (
           <PaymentPage
-            service={selectedService?.name ?? ''}
-            onBack={() => navigate('home')}
+            selectedService={selectedService || "General Service"}
+            onSuccess={handlePaymentSuccess}
           />
         )}
-        {currentPage === 'dashboard' && (
-          <DashboardPage userId={userId} navigate={navigate} />
+        {currentPage === "dashboard" && (
+          <DashboardPage
+            onBack={() => handleNavigate("home")}
+            initialAppId={activeAppId || undefined}
+          />
         )}
-        {currentPage === 'admin' && (
-          <AdminPage />
+        {currentPage === "admin" && (
+          <AdminPage onLogout={handleAdminLogout} />
         )}
-      </main>
-      <Footer />
-      <FloatingSupport />
-      <ChatbotWidget />
-      <Toaster position="top-right" richColors />
+      </div>
+
+      {!isAdminPage && <FloatingSupport />}
+
+      {showAdminLogin && (
+        <AdminLoginModal
+          onSuccess={handleAdminLoginSuccess}
+          onCancel={() => setShowAdminLogin(false)}
+        />
+      )}
     </div>
   );
 }
@@ -86,6 +115,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AppContent />
+      <Toaster />
     </QueryClientProvider>
   );
 }

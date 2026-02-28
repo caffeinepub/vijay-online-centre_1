@@ -19,33 +19,61 @@ export const _CaffeineStorageRefillResult = IDL.Record({
   'success' : IDL.Opt(IDL.Bool),
   'topped_up_amount' : IDL.Opt(IDL.Nat),
 });
-export const ExternalBlob = IDL.Vec(IDL.Nat8);
-export const Document = IDL.Record({
-  'content' : ExternalBlob,
-  'name' : IDL.Text,
-});
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
 export const ApplicationStatus = IDL.Variant({
-  'awaitingPrice' : IDL.Null,
+  'submitted' : IDL.Null,
+  'feeSet' : IDL.Null,
   'completed' : IDL.Null,
-  'paymentPendingVerification' : IDL.Null,
-  'documentsUploaded' : IDL.Null,
-  'priceSet' : IDL.Null,
+  'rejected' : IDL.Null,
+  'paymentVerifying' : IDL.Null,
+  'paymentPending' : IDL.Null,
+});
+export const ExternalBlob = IDL.Vec(IDL.Nat8);
+export const Document = IDL.Record({
+  'content' : ExternalBlob,
+  'name' : IDL.Text,
+});
+export const RejectionInfo = IDL.Record({
+  'timestamp' : IDL.Int,
+  'reason' : IDL.Text,
 });
 export const Application = IDL.Record({
   'id' : IDL.Text,
   'service' : IDL.Text,
   'status' : ApplicationStatus,
+  'applicantName' : IDL.Text,
   'documents' : IDL.Vec(Document),
-  'name' : IDL.Text,
+  'rejection' : IDL.Opt(RejectionInfo),
+  'stage' : IDL.Nat,
   'phoneNumber' : IDL.Text,
   'price' : IDL.Opt(IDL.Nat),
+  'transactionId' : IDL.Opt(IDL.Text),
 });
-export const UserProfile = IDL.Record({ 'name' : IDL.Text });
+export const ManagerNotification = IDL.Record({
+  'message' : IDL.Text,
+  'timestamp' : IDL.Int,
+});
+export const Service = IDL.Record({
+  'name' : IDL.Text,
+  'serviceId' : IDL.Nat,
+  'price' : IDL.Nat,
+});
+export const UserProfile = IDL.Record({
+  'name' : IDL.Text,
+  'role' : IDL.Text,
+  'phoneNumber' : IDL.Opt(IDL.Text),
+});
+export const ApplicationFormData = IDL.Record({
+  'id' : IDL.Text,
+  'service' : IDL.Text,
+  'applicantName' : IDL.Text,
+  'documents' : IDL.Vec(Document),
+  'phoneNumber' : IDL.Text,
+});
 
 export const idlService = IDL.Service({
   '_caffeineStorageBlobIsLive' : IDL.Func(
@@ -75,16 +103,20 @@ export const idlService = IDL.Service({
     ),
   '_caffeineStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
-  'addApplication' : IDL.Func(
-      [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Vec(Document)],
-      [IDL.Bool],
-      [],
-    ),
-  'adminLogin' : IDL.Func([IDL.Text, IDL.Text], [IDL.Text], ['query']),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'canUserPay' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
+  'clearNotification' : IDL.Func([IDL.Nat], [IDL.Bool], []),
   'confirmPayment' : IDL.Func([IDL.Text, IDL.Text], [IDL.Bool], []),
+  'getActivePaymentPrice' : IDL.Func([], [IDL.Nat], ['query']),
+  'getAllApplications' : IDL.Func([], [IDL.Vec(Application)], ['query']),
+  'getAllNotifications' : IDL.Func(
+      [],
+      [IDL.Vec(ManagerNotification)],
+      ['query'],
+    ),
+  'getAllServices' : IDL.Func([], [IDL.Vec(Service)], ['query']),
   'getApplication' : IDL.Func([IDL.Text], [IDL.Opt(Application)], ['query']),
+  'getApplicationFee' : IDL.Func([IDL.Text], [IDL.Opt(IDL.Nat)], ['query']),
   'getApplicationsByStatus' : IDL.Func(
       [ApplicationStatus, IDL.Text],
       [IDL.Vec(Application)],
@@ -92,19 +124,55 @@ export const idlService = IDL.Service({
     ),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
-  'getRejectionMessage' : IDL.Func([IDL.Text], [IDL.Opt(IDL.Text)], ['query']),
+  'getManagerNotifications' : IDL.Func([], [IDL.Vec(ManagerNotification)], []),
+  'getPaymentDetails' : IDL.Func(
+      [],
+      [
+        IDL.Record({
+          'qr' : IDL.Opt(ExternalBlob),
+          'upiDetails' : IDL.Text,
+          'amount' : IDL.Nat,
+        }),
+      ],
+      ['query'],
+    ),
+  'getPaymentIntentURL' : IDL.Func([], [IDL.Text], ['query']),
+  'getRejectionReason' : IDL.Func(
+      [IDL.Text],
+      [IDL.Opt(RejectionInfo)],
+      ['query'],
+    ),
+  'getServicePrice' : IDL.Func([IDL.Nat], [IDL.Opt(IDL.Nat)], ['query']),
+  'getUserApplications' : IDL.Func(
+      [IDL.Text, IDL.Text],
+      [IDL.Vec(Application)],
+      ['query'],
+    ),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
       ['query'],
     ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-  'markPaymentPendingVerification' : IDL.Func([IDL.Text], [IDL.Bool], []),
-  'rejectApplication' : IDL.Func([IDL.Text, IDL.Text], [IDL.Bool], []),
+  'isPaymentActive' : IDL.Func([], [IDL.Bool], ['query']),
+  'rejectApplication' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text],
+      [IDL.Bool],
+      [],
+    ),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'setActivePrice' : IDL.Func([IDL.Nat], [], []),
   'setApplicationFee' : IDL.Func([IDL.Text, IDL.Nat, IDL.Text], [IDL.Bool], []),
-  'updateApplicationStatus' : IDL.Func(
-      [IDL.Text, ApplicationStatus, IDL.Text],
+  'setPaymentQR' : IDL.Func([ExternalBlob], [], []),
+  'setServicePrice' : IDL.Func(
+      [IDL.Nat, IDL.Text, IDL.Nat, IDL.Text],
+      [IDL.Bool],
+      [],
+    ),
+  'submitApplication' : IDL.Func([ApplicationFormData], [Application], []),
+  'submitPayment' : IDL.Func([IDL.Text, IDL.Text], [IDL.Bool], []),
+  'updateApplicationStage' : IDL.Func(
+      [IDL.Text, IDL.Nat, IDL.Text],
       [IDL.Bool],
       [],
     ),
@@ -124,30 +192,58 @@ export const idlFactory = ({ IDL }) => {
     'success' : IDL.Opt(IDL.Bool),
     'topped_up_amount' : IDL.Opt(IDL.Nat),
   });
-  const ExternalBlob = IDL.Vec(IDL.Nat8);
-  const Document = IDL.Record({ 'content' : ExternalBlob, 'name' : IDL.Text });
   const UserRole = IDL.Variant({
     'admin' : IDL.Null,
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
   const ApplicationStatus = IDL.Variant({
-    'awaitingPrice' : IDL.Null,
+    'submitted' : IDL.Null,
+    'feeSet' : IDL.Null,
     'completed' : IDL.Null,
-    'paymentPendingVerification' : IDL.Null,
-    'documentsUploaded' : IDL.Null,
-    'priceSet' : IDL.Null,
+    'rejected' : IDL.Null,
+    'paymentVerifying' : IDL.Null,
+    'paymentPending' : IDL.Null,
+  });
+  const ExternalBlob = IDL.Vec(IDL.Nat8);
+  const Document = IDL.Record({ 'content' : ExternalBlob, 'name' : IDL.Text });
+  const RejectionInfo = IDL.Record({
+    'timestamp' : IDL.Int,
+    'reason' : IDL.Text,
   });
   const Application = IDL.Record({
     'id' : IDL.Text,
     'service' : IDL.Text,
     'status' : ApplicationStatus,
+    'applicantName' : IDL.Text,
     'documents' : IDL.Vec(Document),
-    'name' : IDL.Text,
+    'rejection' : IDL.Opt(RejectionInfo),
+    'stage' : IDL.Nat,
     'phoneNumber' : IDL.Text,
     'price' : IDL.Opt(IDL.Nat),
+    'transactionId' : IDL.Opt(IDL.Text),
   });
-  const UserProfile = IDL.Record({ 'name' : IDL.Text });
+  const ManagerNotification = IDL.Record({
+    'message' : IDL.Text,
+    'timestamp' : IDL.Int,
+  });
+  const Service = IDL.Record({
+    'name' : IDL.Text,
+    'serviceId' : IDL.Nat,
+    'price' : IDL.Nat,
+  });
+  const UserProfile = IDL.Record({
+    'name' : IDL.Text,
+    'role' : IDL.Text,
+    'phoneNumber' : IDL.Opt(IDL.Text),
+  });
+  const ApplicationFormData = IDL.Record({
+    'id' : IDL.Text,
+    'service' : IDL.Text,
+    'applicantName' : IDL.Text,
+    'documents' : IDL.Vec(Document),
+    'phoneNumber' : IDL.Text,
+  });
   
   return IDL.Service({
     '_caffeineStorageBlobIsLive' : IDL.Func(
@@ -177,16 +273,20 @@ export const idlFactory = ({ IDL }) => {
       ),
     '_caffeineStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
-    'addApplication' : IDL.Func(
-        [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Vec(Document)],
-        [IDL.Bool],
-        [],
-      ),
-    'adminLogin' : IDL.Func([IDL.Text, IDL.Text], [IDL.Text], ['query']),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'canUserPay' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
+    'clearNotification' : IDL.Func([IDL.Nat], [IDL.Bool], []),
     'confirmPayment' : IDL.Func([IDL.Text, IDL.Text], [IDL.Bool], []),
+    'getActivePaymentPrice' : IDL.Func([], [IDL.Nat], ['query']),
+    'getAllApplications' : IDL.Func([], [IDL.Vec(Application)], ['query']),
+    'getAllNotifications' : IDL.Func(
+        [],
+        [IDL.Vec(ManagerNotification)],
+        ['query'],
+      ),
+    'getAllServices' : IDL.Func([], [IDL.Vec(Service)], ['query']),
     'getApplication' : IDL.Func([IDL.Text], [IDL.Opt(Application)], ['query']),
+    'getApplicationFee' : IDL.Func([IDL.Text], [IDL.Opt(IDL.Nat)], ['query']),
     'getApplicationsByStatus' : IDL.Func(
         [ApplicationStatus, IDL.Text],
         [IDL.Vec(Application)],
@@ -194,9 +294,32 @@ export const idlFactory = ({ IDL }) => {
       ),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
-    'getRejectionMessage' : IDL.Func(
+    'getManagerNotifications' : IDL.Func(
+        [],
+        [IDL.Vec(ManagerNotification)],
+        [],
+      ),
+    'getPaymentDetails' : IDL.Func(
+        [],
+        [
+          IDL.Record({
+            'qr' : IDL.Opt(ExternalBlob),
+            'upiDetails' : IDL.Text,
+            'amount' : IDL.Nat,
+          }),
+        ],
+        ['query'],
+      ),
+    'getPaymentIntentURL' : IDL.Func([], [IDL.Text], ['query']),
+    'getRejectionReason' : IDL.Func(
         [IDL.Text],
-        [IDL.Opt(IDL.Text)],
+        [IDL.Opt(RejectionInfo)],
+        ['query'],
+      ),
+    'getServicePrice' : IDL.Func([IDL.Nat], [IDL.Opt(IDL.Nat)], ['query']),
+    'getUserApplications' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [IDL.Vec(Application)],
         ['query'],
       ),
     'getUserProfile' : IDL.Func(
@@ -205,16 +328,29 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-    'markPaymentPendingVerification' : IDL.Func([IDL.Text], [IDL.Bool], []),
-    'rejectApplication' : IDL.Func([IDL.Text, IDL.Text], [IDL.Bool], []),
+    'isPaymentActive' : IDL.Func([], [IDL.Bool], ['query']),
+    'rejectApplication' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text],
+        [IDL.Bool],
+        [],
+      ),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'setActivePrice' : IDL.Func([IDL.Nat], [], []),
     'setApplicationFee' : IDL.Func(
         [IDL.Text, IDL.Nat, IDL.Text],
         [IDL.Bool],
         [],
       ),
-    'updateApplicationStatus' : IDL.Func(
-        [IDL.Text, ApplicationStatus, IDL.Text],
+    'setPaymentQR' : IDL.Func([ExternalBlob], [], []),
+    'setServicePrice' : IDL.Func(
+        [IDL.Nat, IDL.Text, IDL.Nat, IDL.Text],
+        [IDL.Bool],
+        [],
+      ),
+    'submitApplication' : IDL.Func([ApplicationFormData], [Application], []),
+    'submitPayment' : IDL.Func([IDL.Text, IDL.Text], [IDL.Bool], []),
+    'updateApplicationStage' : IDL.Func(
+        [IDL.Text, IDL.Nat, IDL.Text],
         [IDL.Bool],
         [],
       ),

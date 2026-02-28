@@ -14,19 +14,44 @@ export interface Application {
   'id' : string,
   'service' : string,
   'status' : ApplicationStatus,
+  'applicantName' : string,
   'documents' : Array<Document>,
-  'name' : string,
+  'rejection' : [] | [RejectionInfo],
+  'stage' : bigint,
   'phoneNumber' : string,
   'price' : [] | [bigint],
+  'transactionId' : [] | [string],
 }
-export type ApplicationStatus = { 'awaitingPrice' : null } |
+export interface ApplicationFormData {
+  'id' : string,
+  'service' : string,
+  'applicantName' : string,
+  'documents' : Array<Document>,
+  'phoneNumber' : string,
+}
+export type ApplicationStatus = { 'submitted' : null } |
+  { 'feeSet' : null } |
   { 'completed' : null } |
-  { 'paymentPendingVerification' : null } |
-  { 'documentsUploaded' : null } |
-  { 'priceSet' : null };
+  { 'rejected' : null } |
+  { 'paymentVerifying' : null } |
+  { 'paymentPending' : null };
 export interface Document { 'content' : ExternalBlob, 'name' : string }
 export type ExternalBlob = Uint8Array;
-export interface UserProfile { 'name' : string }
+export interface ManagerNotification {
+  'message' : string,
+  'timestamp' : bigint,
+}
+export interface RejectionInfo { 'timestamp' : bigint, 'reason' : string }
+export interface Service {
+  'name' : string,
+  'serviceId' : bigint,
+  'price' : bigint,
+}
+export interface UserProfile {
+  'name' : string,
+  'role' : string,
+  'phoneNumber' : [] | [string],
+}
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
@@ -58,68 +83,43 @@ export interface _SERVICE {
   >,
   '_caffeineStorageUpdateGatewayPrincipals' : ActorMethod<[], undefined>,
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
-  /**
-   * / Submit application with documents (documentsUploaded state)
-   */
-  'addApplication' : ActorMethod<
-    [string, string, string, string, Array<Document>],
-    boolean
-  >,
-  /**
-   * / Admin login using static credentials — returns session token on success
-   */
-  'adminLogin' : ActorMethod<[string, string], string>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
-  /**
-   * / Check if user can proceed to payment (status must be priceSet)
-   */
   'canUserPay' : ActorMethod<[string], boolean>,
-  /**
-   * / Confirm payment — admin only (moves from paymentPendingVerification to completed)
-   */
+  'clearNotification' : ActorMethod<[bigint], boolean>,
   'confirmPayment' : ActorMethod<[string, string], boolean>,
-  /**
-   * / Get a single application by ID — accessible to users (own) or admins
-   */
+  'getActivePaymentPrice' : ActorMethod<[], bigint>,
+  'getAllApplications' : ActorMethod<[], Array<Application>>,
+  'getAllNotifications' : ActorMethod<[], Array<ManagerNotification>>,
+  'getAllServices' : ActorMethod<[], Array<Service>>,
   'getApplication' : ActorMethod<[string], [] | [Application]>,
-  /**
-   * / Get applications filtered by status — admin only
-   */
+  'getApplicationFee' : ActorMethod<[string], [] | [bigint]>,
   'getApplicationsByStatus' : ActorMethod<
     [ApplicationStatus, string],
     Array<Application>
   >,
-  /**
-   * / User profile functions required by frontend
-   */
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
-  /**
-   * / Get rejection message — open to anyone
-   */
-  'getRejectionMessage' : ActorMethod<[string], [] | [string]>,
+  'getManagerNotifications' : ActorMethod<[], Array<ManagerNotification>>,
+  'getPaymentDetails' : ActorMethod<
+    [],
+    { 'qr' : [] | [ExternalBlob], 'upiDetails' : string, 'amount' : bigint }
+  >,
+  'getPaymentIntentURL' : ActorMethod<[], string>,
+  'getRejectionReason' : ActorMethod<[string], [] | [RejectionInfo]>,
+  'getServicePrice' : ActorMethod<[bigint], [] | [bigint]>,
+  'getUserApplications' : ActorMethod<[string, string], Array<Application>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
-  /**
-   * / "I Have Paid" — moves status to paymentPendingVerification
-   */
-  'markPaymentPendingVerification' : ActorMethod<[string], boolean>,
-  /**
-   * / Reject application and provide rejection message — admin only
-   */
-  'rejectApplication' : ActorMethod<[string, string], boolean>,
+  'isPaymentActive' : ActorMethod<[], boolean>,
+  'rejectApplication' : ActorMethod<[string, string, string], boolean>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
-  /**
-   * / Set application fee (moves to priceSet) — admin only
-   */
+  'setActivePrice' : ActorMethod<[bigint], undefined>,
   'setApplicationFee' : ActorMethod<[string, bigint, string], boolean>,
-  /**
-   * / Update application status — admin only
-   */
-  'updateApplicationStatus' : ActorMethod<
-    [string, ApplicationStatus, string],
-    boolean
-  >,
+  'setPaymentQR' : ActorMethod<[ExternalBlob], undefined>,
+  'setServicePrice' : ActorMethod<[bigint, string, bigint, string], boolean>,
+  'submitApplication' : ActorMethod<[ApplicationFormData], Application>,
+  'submitPayment' : ActorMethod<[string, string], boolean>,
+  'updateApplicationStage' : ActorMethod<[string, bigint, string], boolean>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

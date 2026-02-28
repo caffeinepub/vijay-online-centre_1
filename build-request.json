@@ -1,120 +1,95 @@
 {
   "kind": "build_request",
-  "title": "Fix Admin Login, Add Reject Flow, Confirm-First Payment Logic, and Document View",
+  "title": "Fix Refresh Button, Active Count Sync, Set Price, and Admin Login",
   "projectName": "Vijay Online Centre",
   "priority": "high",
   "requirements": [
     {
-      "id": "REQ-24",
-      "text": "Force-reset the admin authentication logic in the backend so that the ONLY valid credentials are username 'vijay@123' and password 'vijay@123456'. Remove or replace any existing credential-check code that may be causing 'Unauthorized' or 'Invalid' errors. The adminLogin function must return a valid session token on success and a clear error message on failure. All protected admin endpoints (setApplicationFee, confirmPayment, getApplicationsByStatus, updateApplicationStatus, etc.) must accept and validate this token correctly.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-3"
-        ],
-        "quotes": [
-          "Fix Unauthorized Login: - I am getting 'Unauthorized' and 'Invalid' errors. Force reset the Admin Role for: Username: vijay@123 Password: vijay@123456 Ensure this login has FULL access to the dashboard."
-        ]
-      },
-      "acceptanceCriteria": [
-        "Logging in with username 'vijay@123' and password 'vijay@123456' returns a valid admin session token with no errors.",
-        "Any other username/password combination returns a clear error message and no token.",
-        "All admin-only backend functions (fee setting, payment confirmation, status updates, document retrieval) succeed when called with the valid token.",
-        "No 'Unauthorized' or 'Invalid' errors appear in the frontend after a successful admin login with the correct credentials."
-      ]
-    },
-    {
-      "id": "REQ-25",
-      "text": "Add a 'rejectApplication' backend function: rejectApplication(appId: Text, adminToken: Text) : async Bool. This function must validate the admin token, delete (or permanently remove) the application record from the data store, and set a rejection flag or store a rejection message ('Your request was rejected by Vijay Ji. Please contact for details.') retrievable by the customer's polling mechanism. If the application cannot be found or the token is invalid, return false.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-3"
-        ],
-        "quotes": [
-          "If I click 'REJECT', the request should be deleted from my list, and the customer should see a message: 'Your request was rejected by Vijay Ji. Please contact for details.'"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Calling rejectApplication with a valid admin token and a valid appId removes the application from all admin listing queries.",
-        "After rejection, a customer polling getApplicationById for the rejected appId receives a 'Rejected' status or a response indicating rejection with the message 'Your request was rejected by Vijay Ji. Please contact for details.'",
-        "Calling rejectApplication with an invalid token returns false and makes no changes."
-      ]
-    },
-    {
-      "id": "REQ-26",
-      "text": "In the Admin Dashboard 'Active Requests' tab (which lists applications in 'DocumentsUploaded' status), display two action buttons per row: 'CONFIRM' and 'REJECT'. The 'CONFIRM' button transitions the application to 'AwaitingPrice' / allows the admin to set the fee and generates the UPI QR for the customer. The 'REJECT' button calls the rejectApplication backend function; after a successful call, the row is immediately removed from the admin list. The admin must be able to view all uploaded documents clearly (inline preview or download links) before deciding to CONFIRM or REJECT.",
+      "id": "REQ-1",
+      "text": "Rewrite the Refresh button handler in AdminPage.tsx to forcefully invalidate and re-fetch all application data from the backend (bypassing any cache). The refetch must use React Query's refetch with staleTime=0 and must work correctly on all mobile browsers including Chrome on OnePlus/Android devices. After clicking Refresh, the application list must visibly update with the latest rows from the Applications table.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-3"
+          "msg-5"
         ],
         "quotes": [
-          "In the Admin Dashboard, next to every request, show two buttons: 'CONFIRM' and 'REJECT'.",
-          "Make sure I can see the uploaded documents clearly before I choose to Confirm or Reject."
+          "Force Refresh Logic: Rewrite the 'Refresh' button code to forcefully re-fetch the latest rows from the Applications table. It must work on all mobile browsers, including phone",
+          "Update the API sync code so the Refresh button actually pulls data from the server."
         ]
       },
       "acceptanceCriteria": [
-        "Each application row in the 'Active Requests' tab shows a green 'CONFIRM' button and a red 'REJECT' button.",
-        "Clicking 'REJECT' calls rejectApplication on the backend and removes the row from the list on success.",
-        "Clicking 'CONFIRM' reveals or activates the 'Set Fee (₹)' input and 'Set Price & Generate QR' button for that row.",
-        "Each application row clearly displays all uploaded documents as inline images or download links before the admin acts.",
-        "Document files (images) are rendered as visible thumbnails or previews; non-image files show a download link with the file name."
+        "Clicking Refresh on an OnePlus/Android device triggers a network call to the backend and returns updated data.",
+        "The application list updates visually after each Refresh click without requiring a page reload.",
+        "Refresh does not use stale cached data — it always fetches fresh data from the server.",
+        "The button is not disabled or throttled in a way that prevents repeated refreshes on mobile."
       ]
     },
     {
-      "id": "REQ-27",
-      "text": "Update the customer-facing PaymentPage polling logic so that when the backend returns a 'Rejected' status for the polled application, the customer's waiting screen transitions to a clear rejection message: 'Your request was rejected by Vijay Ji. Please contact for details.' This message must replace the 'waiting for price' spinner and must not show any payment QR code.",
+      "id": "REQ-2",
+      "text": "Fix the active submission count display in the AdminPage so that after clicking Refresh, the count immediately reflects the real number of submitted applications instead of showing '00'. The count must be derived directly from the freshly fetched application data.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-3"
+          "msg-5"
         ],
         "quotes": [
-          "the customer should see a message: 'Your request was rejected by Vijay Ji. Please contact for details.'"
+          "Sync Active Count: Clicking refresh must immediately change the '00' to the real number of submissions."
         ]
       },
       "acceptanceCriteria": [
-        "When polling detects a 'Rejected' status, the waiting screen is replaced with the rejection message 'Your request was rejected by Vijay Ji. Please contact for details.'",
-        "No UPI QR code is shown after rejection.",
-        "Polling stops after the rejection state is detected.",
-        "The rejection message is clearly visible on both mobile and desktop layouts."
+        "Before any refresh, the count may show 0 as a loading state, but after Refresh completes, it shows the real number of applications.",
+        "The count does not remain at '00' after a successful data fetch.",
+        "The count is computed from the live fetched list, not a hardcoded or stale value."
       ]
     },
     {
-      "id": "REQ-28",
-      "text": "Enforce the 'Confirm-First' payment QR reveal logic: the customer must NOT see the UPI payment QR code until the admin has explicitly clicked 'CONFIRM' (which sets the fee and transitions the application to 'PriceSet'). The customer's PaymentPage must poll for status 'PriceSet' before unlocking and displaying the dynamic UPI QR code (upi://pay?pa=8173064549@okicici&pn=VijayOnlineCentre&am={fee}&cu=INR). After the customer clicks 'I Have Paid', the status moves to 'PaymentPendingVerification'. The admin's 'Payments to Verify' tab then shows a 'DONE' button per row; clicking 'DONE' calls confirmPayment and transitions the application to 'Completed', at which point the customer's screen shows 'Payment Successful ✅' with a receipt summary.",
+      "id": "REQ-3",
+      "text": "Fix the Set Price mutation in useQueries.ts and AdminPage.tsx so that submitting a fee (e.g., 200) does not return an 'Unauthorized' error. The admin actor must be properly authenticated before calling the setFee backend function. After a successful Set Price call, the updated fee must be immediately visible to customers on the DashboardPage without requiring a page reload.",
       "target": "both",
       "source": {
         "messageIds": [
-          "msg-3"
+          "msg-5"
         ],
         "quotes": [
-          "If I click 'CONFIRM', only then the payment QR should show to the customer.",
-          "After they pay, I will click a final 'DONE' button to complete the order."
+          "Set Price Fix: Ensure that when I click 'Set Price', the 200 amount is saved and visible to customers immediately. Remove any 'Unauthorized' errors."
         ]
       },
       "acceptanceCriteria": [
-        "The UPI QR code is hidden on the customer's PaymentPage until the backend status is 'PriceSet'.",
-        "After admin clicks 'CONFIRM' and sets the fee, the customer's polled status becomes 'PriceSet' and the QR code appears.",
-        "After the customer clicks 'I Have Paid', the backend status is updated to 'PaymentPendingVerification' and the customer sees 'Payment Received. Waiting for Vijay Ji to verify...' with a spinner.",
-        "The admin's 'Payments to Verify' tab shows a 'DONE' button (not just 'CONFIRM / DONE') per row.",
-        "Clicking 'DONE' in the admin tab calls confirmPayment and moves the application to 'Completed'.",
-        "Once status is 'Completed', the customer's polling screen transitions to 'Payment Successful ✅' with a receipt showing Customer Name, Service Name, Amount Paid, and Application ID."
+        "Clicking 'Set Price' with a value of 200 does not produce an 'Unauthorized' error.",
+        "The fee is persisted in the backend and returned in subsequent application fetches.",
+        "Customers viewing the DashboardPage see the updated fee amount immediately after the admin saves it.",
+        "The admin actor used for the setFee call carries a valid identity/session."
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Ensure the admin login credentials vijay@123 (username: vijay, password: 123) and vijay@2026 (username: vijay, password: 2026) both continue to work in the useAdminAuth.ts hook. Do not remove or alter these hardcoded credentials. The 24-hour session stored in localStorage must remain intact.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-5"
+        ],
+        "quotes": [
+          "Admin Login: Keep vijay@123 and vijay@2026 as the working login."
+        ]
+      },
+      "acceptanceCriteria": [
+        "Logging in with username 'vijay' and password '123' succeeds and grants admin access.",
+        "Logging in with username 'vijay' and password '2026' succeeds and grants admin access.",
+        "Invalid credentials still correctly reject login.",
+        "Session persists for 24 hours in localStorage."
       ]
     }
   ],
   "constraints": [
-    "Admin credentials must remain exactly: username 'vijay@123', password 'vijay@123456'.",
-    "Do not change or break the existing 'Upload First, Pay Later' status lifecycle: DocumentsUploaded → PriceSet → PaymentPendingVerification → Completed.",
-    "Do not modify files under frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, or frontend/src/components/ui.",
-    "All Motoko logic must remain in a single actor in backend/main.mo."
+    "Do not change the hardcoded admin credentials vijay@123 and vijay@2026 in useAdminAuth.ts.",
+    "Do not modify files listed in frontend.immutablePaths.",
+    "Refresh logic must work on mobile browsers (Android/Chrome/OnePlus) — avoid desktop-only APIs."
   ],
   "nonGoals": [
-    "Do not add any new service categories or change the existing 22-service catalog.",
-    "Do not change the UPI payment address or ICICI QR reference image.",
-    "Do not add email or SMS notification systems.",
-    "Do not redesign the overall visual theme or color palette."
+    "Adding new authentication systems or replacing Internet Identity.",
+    "Redesigning the admin dashboard UI layout.",
+    "Adding new application fields or backend schema changes unrelated to these fixes."
   ],
   "imageRequirements": {
     "required": [],
