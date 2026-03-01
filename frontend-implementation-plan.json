@@ -1,87 +1,145 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix Refresh Button, Active Count Sync, Set Price, and Admin Login",
+  "title": "Add Automatic Payment Receipt System",
   "requirements": [
     {
-      "id": "REQ-1",
-      "summary": "Rewrite Refresh button handler to forcefully invalidate and re-fetch all application data from backend with staleTime=0, ensuring it works on all mobile browsers including Chrome on OnePlus/Android devices",
+      "id": "REQ-2",
+      "summary": "Add React Query mutation hook for marking payment success",
       "acceptanceCriteria": [
-        "Clicking Refresh on an OnePlus/Android device triggers a network call to the backend and returns updated data.",
-        "The application list updates visually after each Refresh click without requiring a page reload.",
-        "Refresh does not use stale cached data — it always fetches fresh data from the server.",
-        "The button is not disabled or throttled in a way that prevents repeated refreshes on mobile."
+        "useMarkPaymentSuccess mutation calls the backend markPaymentSuccess function.",
+        "On success, the customers query cache is invalidated so all consumers re-fetch fresh data.",
+        "The hook is exported from useQueries.ts for use in AdminPage and ReceiptPage."
       ],
       "file_operations": [
-        {
-          "path": "frontend/src/pages/AdminPage.tsx",
-          "operation": "modify",
-          "description": "Replace the Refresh button's onClick handler to use queryClient.invalidateQueries with queryKey ['applications', 'all'] followed by refetch with options { cancelRefetch: true, throwOnError: false }. Remove any button disabling logic that prevents repeated clicks. Ensure the refetch call bypasses React Query's stale data cache by setting staleTime to 0 in the query configuration."
-        },
         {
           "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Update the useGetAllApplications hook to set staleTime: 0 and cacheTime: 0 in the useQuery options to ensure every refetch goes directly to the backend without using cached data. Verify that the query is enabled whenever the actor is available."
-        }
-      ]
-    },
-    {
-      "id": "REQ-2",
-      "summary": "Fix active submission count display so it reflects the real number of submitted applications immediately after Refresh, computed directly from freshly fetched application data",
-      "acceptanceCriteria": [
-        "Before any refresh, the count may show 0 as a loading state, but after Refresh completes, it shows the real number of applications.",
-        "The count does not remain at '00' after a successful data fetch.",
-        "The count is computed from the live fetched list, not a hardcoded or stale value."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/AdminPage.tsx",
-          "operation": "modify",
-          "description": "Update the active count computation to derive the count directly from the applications array returned by useGetAllApplications. Replace any hardcoded '00' fallback with a computed value: applications?.filter(app => app.status === ApplicationStatus.submitted).length || 0. Ensure the count updates immediately when the applications data changes after a successful refetch."
+          "description": "Add a new mutation hook `useMarkPaymentSuccess` that calls the backend `markPaymentSuccess(customerId: bigint)` function and invalidates the 'customers' query key on success to trigger automatic refresh of customer data across all components."
         }
       ]
     },
     {
       "id": "REQ-3",
-      "summary": "Fix Set Price mutation to ensure admin actor is properly authenticated before calling setFee, eliminating 'Unauthorized' errors, and ensure updated fee is immediately visible to customers on DashboardPage",
+      "summary": "Add 'Mark as Paid' button to AdminPage with payment status handling",
       "acceptanceCriteria": [
-        "Clicking 'Set Price' with a value of 200 does not produce an 'Unauthorized' error.",
-        "The fee is persisted in the backend and returned in subsequent application fetches.",
-        "Customers viewing the DashboardPage see the updated fee amount immediately after the admin saves it.",
-        "The admin actor used for the setFee call carries a valid identity/session."
+        "Each customer row in AdminPage shows a 'Mark as Paid' button when paymentStatus is not 'success'.",
+        "Button enters loading state during mutation and is replaced with a green 'Paid' badge after success.",
+        "The receiptId value (e.g., VOC17092026) is visible in the admin row after being set.",
+        "Already-paid customers show the Paid badge and receiptId without a 'Mark as Paid' button."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Update the useSetApplicationFee mutation to pass the adminToken from useAdminAuth along with the setApplicationFee backend call. Ensure the mutation uses an authenticated actor instance by verifying that the actor is properly initialized before invoking setApplicationFee. After a successful mutation, invalidate both ['applications', 'all'] and ['application', appId] query keys to trigger immediate refetch of updated application data."
-        },
-        {
           "path": "frontend/src/pages/AdminPage.tsx",
           "operation": "modify",
-          "description": "Update the Set Price button handler to retrieve the adminToken from useAdminAuth and pass it to the useSetApplicationFee mutation. Add error handling to display a user-friendly message if the mutation fails with 'Unauthorized'. Ensure that after a successful fee update, the application list visibly updates without requiring a manual refresh."
-        },
-        {
-          "path": "frontend/src/pages/DashboardPage.tsx",
-          "operation": "modify",
-          "description": "Ensure the DashboardPage refetches application data whenever it mounts or when the user looks up an application by ID. Verify that the fee amount displayed in the payment section is derived directly from the fetched application.price field, ensuring customers see the updated fee immediately after an admin sets it."
+          "description": "Add a 'Mark as Paid' button for each customer whose paymentStatus is not 'success'. Use the `useMarkPaymentSuccess` mutation from useQueries.ts. Show loading state during the mutation and display a green 'Paid ✅' badge after success. Display the receiptId field alongside customer details once it is set. For customers already marked as paid, show only the badge and receiptId without the button."
         }
       ]
     },
     {
       "id": "REQ-4",
-      "summary": "Ensure admin login credentials vijay@123 and vijay@2026 both work, preserving the 24-hour session in localStorage without altering the hardcoded credentials",
+      "summary": "Create ReceiptPage with payment receipt display and auto-refresh",
       "acceptanceCriteria": [
-        "Logging in with username 'vijay' and password '123' succeeds and grants admin access.",
-        "Logging in with username 'vijay' and password '2026' succeeds and grants admin access.",
-        "Invalid credentials still correctly reject login.",
-        "Session persists for 24 hours in localStorage."
+        "ReceiptPage renders all required fields: customer name, mobile, service name, amount, UPI ID 8173064549@okicici, receiver name, transaction date/time, and receiptId.",
+        "Header displays 'Vijay Online Centre' and 'Successful Payment Receipt'.",
+        "Payment status shows a green 'SUCCESSFUL ✅' badge.",
+        "When paymentStatus is 'pending', the page shows a pending state and polls the backend every 5 seconds.",
+        "Once paymentStatus becomes 'success', the receipt renders automatically without a manual page refresh."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useAdminAuth.ts",
+          "path": "frontend/src/pages/ReceiptPage.tsx",
+          "operation": "create",
+          "description": "Create a new page that accepts a customerId or mobile number from URL params/query. Fetch the customer record using useQuery. When paymentStatus is 'success', render a clean receipt displaying: header ('Vijay Online Centre' and 'Successful Payment Receipt'), customer name, mobile, service name, amount with ₹ symbol, payment method (UPI QR), UPI ID (8173064549@okicici, hardcoded), receiver name (Vijay Online Centre, hardcoded), transaction date/time from paymentDate, and receiptId. When paymentStatus is 'pending', show a waiting message and use setInterval to refetch the customer data every 5 seconds until payment is confirmed. Use React Query's refetch capability and cleanup the interval on unmount or when status changes to 'success'."
+        }
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "summary": "Style ReceiptPage with clean print-optimized design",
+      "acceptanceCriteria": [
+        "Receipt is displayed on a white background with center-aligned header.",
+        "A large green 'SUCCESS' badge/text is prominently shown.",
+        "Customer details and payment details are in clearly separated, labeled sections.",
+        "Receipt number is displayed at the bottom.",
+        "@media print CSS hides header navigation, buttons, and footer so only the receipt content prints."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/ReceiptPage.tsx",
           "operation": "modify",
-          "description": "Verify that the login function correctly validates both credential pairs: (username: 'vijay', password: '123') and (username: 'vijay', password: '2026'). Ensure the 24-hour session expiry logic remains intact, storing the session token and expiry timestamp in localStorage under the key 'adminSession'. Do not remove or alter the hardcoded credential checks. Confirm that invalid credentials return an appropriate error message."
+          "description": "Apply inline styles or Tailwind classes for a clean white background, center-aligned header with bold business name, and a large green 'SUCCESS ✅' text at the top. Organize customer and payment details into clearly separated sections using card-like divs with labels. Display the receiptId prominently at the bottom. Use the existing navy/saffron color palette for branding accents. Add @media print CSS rules (scoped style tag or global index.css) to hide navigation, buttons, and footer elements during print, ensuring only the receipt content is printed."
+        }
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "summary": "Add Print and Download PDF buttons to ReceiptPage",
+      "acceptanceCriteria": [
+        "A 'Print Receipt' button calls window.print() and only the receipt content is printed.",
+        "A 'Download Slip' button generates and downloads a PDF file of the receipt.",
+        "The downloaded file is named using the pattern VOC-Receipt-{receiptId}.pdf.",
+        "Both buttons are hidden during print (@media print)."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/ReceiptPage.tsx",
+          "operation": "modify",
+          "description": "Add a 'Print Receipt' button that calls window.print(). Add a 'Download Slip' button that uses html2canvas and jsPDF (or browser print-to-PDF flow) to generate a PDF of the receipt content and trigger download with filename 'VOC-Receipt-{receiptId}.pdf'. Hide both buttons using @media print CSS rules. If using html2canvas/jsPDF, install dependencies via npm and import them; if using browser print-to-PDF, guide the user to use Print > Save as PDF."
+        }
+      ]
+    },
+    {
+      "id": "REQ-7",
+      "summary": "Add mobile number search feature to ReceiptPage",
+      "acceptanceCriteria": [
+        "A mobile number input field is visible on the ReceiptPage when no customerId is pre-filled.",
+        "Entering a valid mobile number and submitting fetches and displays the matching receipt.",
+        "If no matching paid record is found, a clear 'No paid receipt found for this mobile number' message is shown.",
+        "If the record exists but paymentStatus is pending, a 'Payment pending' message is shown."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/ReceiptPage.tsx",
+          "operation": "modify",
+          "description": "Add a mobile number search input at the top of the page. When no customerId is present in the URL, show the search input. On form submission, find the customer by mobile number from the getAllCustomers query result. If a matching customer with paymentStatus='success' is found, display the receipt. If the customer is found but paymentStatus is 'pending', show a 'Payment pending' message. If no matching record is found, show 'No paid receipt found for this mobile number'. Allow searching again after displaying a result."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Add a query hook `useGetAllCustomers` that fetches all customers via `getAllCustomers()` backend method. This allows ReceiptPage to search for a customer by mobile number when no customerId is provided in the URL."
+        }
+      ]
+    },
+    {
+      "id": "REQ-8",
+      "summary": "Redirect to ReceiptPage after payment success",
+      "acceptanceCriteria": [
+        "After the payment step in PaymentPage shows success, the user is automatically navigated to the ReceiptPage.",
+        "The customerId is passed as a parameter so the receipt can be loaded directly.",
+        "The ReceiptPage correctly loads the customer record using the passed customerId."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/PaymentPage.tsx",
+          "operation": "modify",
+          "description": "After the customer submission succeeds and the success step is displayed, add an automatic redirect to the ReceiptPage using React Router's navigate function. Pass the newly created customerId as a URL parameter (e.g., /receipt?customerId=123 or /receipt/123 depending on the route structure). Optionally add a short delay (1-2 seconds) so the user sees the success message before redirecting."
+        }
+      ]
+    },
+    {
+      "id": "REQ-9",
+      "summary": "Register ReceiptPage route in App.tsx",
+      "acceptanceCriteria": [
+        "Navigating to '/receipt' renders ReceiptPage without requiring login.",
+        "Query parameters (customerId or mobile) are read and used to load the appropriate receipt.",
+        "The route is added to App.tsx alongside existing home/payment/admin routes."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Add a new route for ReceiptPage at path '/receipt' (or '/receipt/:customerId' if using path params). Ensure the route is accessible without admin authentication. Place the route alongside existing HomePage, PaymentPage, and AdminPage routes. The route should accept optional query parameters for customerId and mobile number that ReceiptPage will read and use to load the appropriate receipt."
         }
       ]
     }

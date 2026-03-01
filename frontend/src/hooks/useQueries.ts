@@ -1,384 +1,170 @@
-import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
-import { ApplicationStatus } from '../backend';
-import type { Application, ApplicationFormData, UserProfile } from '../backend';
+import type { Customer } from '../backend';
 
-// ─── Chatbot ──────────────────────────────────────────────────────────────────
+// ── Customer hooks ────────────────────────────────────────────────────────────
 
-export interface ChatMessage {
-  text: string;
-  time: string;
-  isUser: boolean;
-}
+export function useAllCustomers() {
+  const { actor, isFetching } = useActor();
 
-const FAQ_RESPONSES: Record<string, string> = {
-  aadhaar: "For Aadhaar Update, you need your existing Aadhaar card and supporting documents. Visit our centre or apply online.",
-  pan: "PAN Card application requires identity proof, address proof, and a passport-size photo.",
-  passport: "Passport requires birth certificate, address proof, and identity proof. Processing takes 7-30 days.",
-  status: "You can track your application status on the Dashboard page using your Application ID.",
-  fee: "Service fees vary by application type. The admin will set the fee after reviewing your application.",
-  payment: "We accept UPI payments via 8173064549@okicici (ICICI Bank - XX47).",
-  time: "Processing time varies: 3-7 days for certificates, 7-30 days for passports and licences.",
-  document: "Required documents depend on the service. Generally: ID proof, address proof, and relevant certificates.",
-  help: "I can help with service information, application status, fees, and document requirements. What do you need?",
-};
-
-function getBotResponse(userMessage: string): string {
-  const lower = userMessage.toLowerCase();
-  for (const [key, response] of Object.entries(FAQ_RESPONSES)) {
-    if (lower.includes(key)) return response;
-  }
-  return "Thank you for your query. For specific assistance, please visit our centre or call us. You can also track your application on the Dashboard.";
-}
-
-export function useChatbot() {
-  const [messages, setMessages] = React.useState<ChatMessage[]>([
-    {
-      text: "Hello! I am the Vijay Online Centre assistant. How can I help you today?",
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      isUser: false,
-    },
-  ]);
-
-  const sendMessage = (text: string) => {
-    const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const userMsg: ChatMessage = { text, time: now, isUser: true };
-    const botMsg: ChatMessage = { text: getBotResponse(text), time: now, isUser: false };
-    setMessages((prev) => [...prev, userMsg, botMsg]);
-  };
-
-  return { messages, sendMessage };
-}
-
-// ─── User Profile ────────────────────────────────────────────────────────────
-
-export function useGetCallerUserProfile() {
-  const { actor, isFetching: actorFetching } = useActor();
-
-  const query = useQuery<UserProfile | null>({
-    queryKey: ['currentUserProfile'],
-    queryFn: async () => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.getCallerUserProfile();
-    },
-    enabled: !!actor && !actorFetching,
-    retry: false,
-    staleTime: 0,
-  });
-
-  return {
-    ...query,
-    isLoading: actorFetching || query.isLoading,
-    isFetched: !!actor && query.isFetched,
-  };
-}
-
-export function useSaveCallerUserProfile() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (profile: UserProfile) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.saveCallerUserProfile(profile);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
-    },
-  });
-}
-
-// ─── Applications ─────────────────────────────────────────────────────────────
-
-export function useGetAllApplications() {
-  const { actor, isFetching: actorFetching } = useActor();
-
-  return useQuery<Application[]>({
-    queryKey: ['allApplications'],
+  return useQuery<Customer[]>({
+    queryKey: ['customers'],
     queryFn: async () => {
       if (!actor) return [];
-      const result = await actor.getAllApplications();
-      return result;
+      return actor.getAllCustomers();
     },
-    enabled: !!actor && !actorFetching,
-    staleTime: 0,
-    gcTime: 0,
-    refetchOnMount: true,
+    enabled: !!actor && !isFetching,
+    refetchInterval: 5000,
     refetchOnWindowFocus: true,
-  });
-}
-
-export function useGetApplication(appId: string | null) {
-  const { actor, isFetching: actorFetching } = useActor();
-
-  return useQuery<Application | null>({
-    queryKey: ['application', appId],
-    queryFn: async () => {
-      if (!actor || !appId) return null;
-      return actor.getApplication(appId);
-    },
-    enabled: !!actor && !actorFetching && !!appId,
-    staleTime: 0,
-    gcTime: 0,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
-  });
-}
-
-export function useSubmitApplication() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (app: ApplicationFormData) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.submitApplication(app);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allApplications'] });
-    },
-  });
-}
-
-export function useSetApplicationFee() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      appId,
-      fee,
-      adminToken,
-    }: {
-      appId: string;
-      fee: bigint;
-      adminToken: string;
-    }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.setApplicationFee(appId, fee, adminToken);
-    },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['allApplications'] });
-      queryClient.invalidateQueries({ queryKey: ['application', variables.appId] });
-    },
-  });
-}
-
-export function useConfirmPayment() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ appId, adminToken }: { appId: string; adminToken: string }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.confirmPayment(appId, adminToken);
-    },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['allApplications'] });
-      queryClient.invalidateQueries({ queryKey: ['application', variables.appId] });
-    },
-  });
-}
-
-export function useRejectApplication() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      appId,
-      reason,
-      adminToken,
-    }: {
-      appId: string;
-      reason: string;
-      adminToken: string;
-    }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.rejectApplication(appId, reason, adminToken);
-    },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['allApplications'] });
-      queryClient.invalidateQueries({ queryKey: ['application', variables.appId] });
-    },
-  });
-}
-
-export function useUpdateApplicationStage() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      appId,
-      stage,
-      adminToken,
-    }: {
-      appId: string;
-      stage: bigint;
-      adminToken: string;
-    }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.updateApplicationStage(appId, stage, adminToken);
-    },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['allApplications'] });
-      queryClient.invalidateQueries({ queryKey: ['application', variables.appId] });
-    },
-  });
-}
-
-export function useSubmitPayment() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ appId, transactionId }: { appId: string; transactionId: string }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.submitPayment(appId, transactionId);
-    },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['application', variables.appId] });
-    },
-  });
-}
-
-// ─── Payment Details ──────────────────────────────────────────────────────────
-
-export function useGetPaymentDetails() {
-  const { actor, isFetching: actorFetching } = useActor();
-
-  return useQuery({
-    queryKey: ['paymentDetails'],
-    queryFn: async () => {
-      if (!actor) return null;
-      return actor.getPaymentDetails();
-    },
-    enabled: !!actor && !actorFetching,
     staleTime: 0,
     gcTime: 0,
   });
 }
 
-export function useGetActivePaymentPrice() {
-  const { actor, isFetching: actorFetching } = useActor();
+export function useGetAllCustomers() {
+  const { actor, isFetching } = useActor();
 
-  return useQuery<bigint>({
-    queryKey: ['activePaymentPrice'],
-    queryFn: async () => {
-      if (!actor) return BigInt(0);
-      return actor.getActivePaymentPrice();
-    },
-    enabled: !!actor && !actorFetching,
-    staleTime: 0,
-    gcTime: 0,
-  });
-}
-
-export function useSetActivePrice() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (amount: bigint) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.setActivePrice(amount);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['paymentDetails'] });
-      queryClient.invalidateQueries({ queryKey: ['activePaymentPrice'] });
-      queryClient.invalidateQueries({ queryKey: ['allApplications'] });
-    },
-  });
-}
-
-// ─── Notifications ────────────────────────────────────────────────────────────
-
-export function useGetAllNotifications() {
-  const { actor, isFetching: actorFetching } = useActor();
-
-  return useQuery({
-    queryKey: ['allNotifications'],
+  return useQuery<Customer[]>({
+    queryKey: ['customers-public'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllNotifications();
+      return actor.getAllCustomers();
     },
-    enabled: !!actor && !actorFetching,
-    staleTime: 0,
-    gcTime: 0,
-  });
-}
-
-export function useClearNotification() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (notificationId: bigint) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.clearNotification(notificationId);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allNotifications'] });
-    },
-  });
-}
-
-// ─── Services ─────────────────────────────────────────────────────────────────
-
-export function useGetAllServices() {
-  const { actor, isFetching: actorFetching } = useActor();
-
-  return useQuery({
-    queryKey: ['allServices'],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getAllServices();
-    },
-    enabled: !!actor && !actorFetching,
+    enabled: !!actor && !isFetching,
+    refetchInterval: 5000,
     staleTime: 0,
   });
 }
 
-export function useSetServicePrice() {
+export function useSubmitCustomer() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({
-      serviceId,
       name,
-      price,
-      adminToken,
+      service,
+      mobile,
     }: {
-      serviceId: bigint;
       name: string;
-      price: bigint;
-      adminToken: string;
+      service: string;
+      mobile: string;
+      amount?: number; // kept for API compatibility but not sent to backend
     }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.setServicePrice(serviceId, name, price, adminToken);
+      if (!actor) throw new Error('Backend not available');
+      // Backend addCustomer(name, mobile, service) — amount defaults to 0.0 on backend
+      const id = await actor.addCustomer(name, mobile, service);
+      return Number(id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allServices'] });
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['customers-public'] });
     },
   });
 }
 
-// ─── Application Fee ──────────────────────────────────────────────────────────
+export function useUpdateCustomerStatus() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
 
-export function useGetApplicationFee(appId: string | null) {
-  const { actor, isFetching: actorFetching } = useActor();
-
-  return useQuery<bigint | null>({
-    queryKey: ['applicationFee', appId],
-    queryFn: async () => {
-      if (!actor || !appId) return null;
-      return actor.getApplicationFee(appId);
+  return useMutation({
+    mutationFn: async ({
+      id,
+      status,
+    }: {
+      id: number;
+      status: string;
+      adminToken?: string; // kept for call-site compatibility
+    }) => {
+      if (!actor) throw new Error('Backend not available');
+      // Backend: updateCustomerStatus(id: bigint, status: string)
+      return actor.updateCustomerStatus(BigInt(id), status);
     },
-    enabled: !!actor && !actorFetching && !!appId,
-    staleTime: 0,
-    gcTime: 0,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['customers-public'] });
+    },
+  });
+}
+
+export function useUpdateCustomerAmount() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      amount,
+    }: {
+      id: number;
+      amount: number;
+      adminToken?: string; // kept for call-site compatibility
+    }) => {
+      if (!actor) throw new Error('Backend not available');
+      // Backend: updateCustomerAmount(id: bigint, amount: number) — Float
+      return actor.updateCustomerAmount(BigInt(id), amount);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['customers-public'] });
+    },
+  });
+}
+
+export function useUpdateCustomer() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      name,
+      service,
+      mobile,
+      amount,
+      status,
+    }: {
+      id: number;
+      name: string;
+      service: string;
+      mobile: string;
+      amount: number;
+      status: string;
+      adminToken?: string; // kept for call-site compatibility
+    }) => {
+      if (!actor) throw new Error('Backend not available');
+      // Backend: updateCustomer(customer: Customer)
+      const customer: Customer = {
+        id: BigInt(id),
+        name,
+        service,
+        mobile,
+        amount,
+        status,
+        createdAt: BigInt(0), // will be preserved by backend
+        paymentStatus: 'pending',
+      };
+      return actor.updateCustomer(customer);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['customers-public'] });
+    },
+  });
+}
+
+export function useMarkPaymentSuccess() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (customerId: number) => {
+      if (!actor) throw new Error('Backend not available');
+      return actor.markPaymentSuccess(BigInt(customerId));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['customers-public'] });
+    },
   });
 }

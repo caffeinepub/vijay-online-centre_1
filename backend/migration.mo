@@ -1,45 +1,46 @@
 import Map "mo:core/Map";
-import Text "mo:core/Text";
 import Nat "mo:core/Nat";
-import Blob "mo:core/Blob";
 
 module {
-  type ApplicationStatus = {
-    #documentsUploaded;
-    #awaitingPrice;
-    #priceSet;
-    #paymentPendingVerification;
-    #completed;
-  };
-
-  type Document = {
+  type OldCustomer = {
+    id : Nat;
     name : Text;
-    content : Blob;
-  };
-
-  type Application = {
-    id : Text;
-    name : Text;
-    phoneNumber : Text;
+    mobile : Text;
     service : Text;
-    status : ApplicationStatus;
-    price : ?Nat;
-    documents : [Document];
+    amount : Float;
+    status : Text;
+    createdAt : Int;
   };
 
   type OldActor = {
-    applications : Map.Map<Text, Application>;
-    validCredentials : { username : Text; password : Text };
+    customers : Map.Map<Nat, OldCustomer>;
+    nextCustomerId : Nat;
+  };
+
+  type NewCustomer = {
+    id : Nat;
+    name : Text;
+    mobile : Text;
+    service : Text;
+    amount : Float;
+    status : Text;
+    createdAt : Int;
+    paymentStatus : Text;
+    paymentDate : ?Int;
+    receiptId : ?Text;
   };
 
   type NewActor = {
-    applications : Map.Map<Text, Application>;
-    validCredentials : { username : Text; password : Text };
-    rejectionMessages : Map.Map<Text, Text>;
+    customers : Map.Map<Nat, NewCustomer>;
+    nextCustomerId : Nat;
   };
 
   public func run(old : OldActor) : NewActor {
-    let rejectionMessages = Map.empty<Text, Text>();
-    { old with rejectionMessages };
+    let newCustomers = old.customers.map<Nat, OldCustomer, NewCustomer>(
+      func(_id, oldCustomer) {
+        { oldCustomer with paymentStatus = "pending"; paymentDate = null; receiptId = null };
+      }
+    );
+    { old with customers = newCustomers };
   };
 };

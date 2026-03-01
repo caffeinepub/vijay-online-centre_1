@@ -2,33 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-rewrite-the-refresh-button-handler-in-adminpage-tsx-to-forcefully-invalidate-and-re-fetch-all-application-data-from-the-backend-bypassing-any-cache-the-refetch-must-use-react-query-s-refetch-with-staletime-0-and-must-work-correctly-on-all-mobile-browsers-including-chrome-on-oneplus-android-devices-after-clicking-refresh-the-application-list-must-visibly-update-with-the-latest-rows-from-the-applications-table",
-      "featureTitle": "Rewrite the Refresh button handler in AdminPage.tsx to forcefully invalidate and re-fetch all application data from the backend (bypassing any cache). The refetch must use React Query's refetch with staleTime=0 and must work correctly on all mobile browsers including Chrome on OnePlus/Android devices. After clicking Refresh, the application list must visibly update with the latest rows from the Applications table.",
+      "featureId": "feature-add-a-react-query-mutation-hook-usemarkpaymentsuccess-in-frontend-src-hooks-usequeries-ts-that-calls-the-backend-markpaymentsuccess-function-and-invalidates-the-customers-query-on-success",
+      "featureTitle": "Add a React Query mutation hook `useMarkPaymentSuccess` in `frontend/src/hooks/useQueries.ts` that calls the backend `markPaymentSuccess` function and invalidates the customers query on success.",
       "files": [
-        "frontend/src/hooks/useQueries.ts",
-        "frontend/src/pages/AdminPage.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "qr-code@1.0.0",
-        "camera@1.0.0",
-        "authorization@4.0.0",
-        "blob-storage@4.0.0"
-      ],
-      "testIds": [
-        "REQ-1"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-fix-the-active-submission-count-display-in-the-adminpage-so-that-after-clicking-refresh-the-count-immediately-reflects-the-real-number-of-submitted-applications-instead-of-showing-00-the-count-must-be-derived-directly-from-the-freshly-fetched-application-data",
-      "featureTitle": "Fix the active submission count display in the AdminPage so that after clicking Refresh, the count immediately reflects the real number of submitted applications instead of showing '00'. The count must be derived directly from the freshly fetched application data.",
-      "files": [
-        "frontend/src/pages/AdminPage.tsx"
+        "frontend/src/hooks/useQueries.ts"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -47,12 +24,10 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-fix-the-set-price-mutation-in-usequeries-ts-and-adminpage-tsx-so-that-submitting-a-fee-e-g-200-does-not-return-an-unauthorized-error-the-admin-actor-must-be-properly-authenticated-before-calling-the-setfee-backend-function-after-a-successful-set-price-call-the-updated-fee-must-be-immediately-visible-to-customers-on-the-dashboardpage-without-requiring-a-page-reload",
-      "featureTitle": "Fix the Set Price mutation in useQueries.ts and AdminPage.tsx so that submitting a fee (e.g., 200) does not return an 'Unauthorized' error. The admin actor must be properly authenticated before calling the setFee backend function. After a successful Set Price call, the updated fee must be immediately visible to customers on the DashboardPage without requiring a page reload.",
+      "featureId": "feature-add-a-mark-as-paid-button-in-adminpage-tsx-for-each-customer-record-whose-paymentstatus-is-not-success-clicking-it-calls-the-usemarkpaymentsuccess-mutation-for-that-customer-transitions-the-button-to-a-loading-state-and-on-success-shows-a-visual-confirmation-green-checkmark-paid-badge-and-disables-the-button-display-the-receiptid-in-the-admin-row-once-available",
+      "featureTitle": "Add a 'Mark as Paid' button in AdminPage.tsx for each customer record whose paymentStatus is not 'success'. Clicking it calls the useMarkPaymentSuccess mutation for that customer, transitions the button to a loading state, and on success shows a visual confirmation (green checkmark / 'Paid' badge) and disables the button. Display the receiptId in the admin row once available.",
       "files": [
-        "frontend/src/hooks/useQueries.ts",
-        "frontend/src/pages/AdminPage.tsx",
-        "frontend/src/pages/DashboardPage.tsx"
+        "frontend/src/pages/AdminPage.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -71,10 +46,10 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-ensure-the-admin-login-credentials-vijay-123-username-vijay-password-123-and-vijay-2026-username-vijay-password-2026-both-continue-to-work-in-the-useadminauth-ts-hook-do-not-remove-or-alter-these-hardcoded-credentials-the-24-hour-session-stored-in-localstorage-must-remain-intact",
-      "featureTitle": "Ensure the admin login credentials vijay@123 (username: vijay, password: 123) and vijay@2026 (username: vijay, password: 2026) both continue to work in the useAdminAuth.ts hook. Do not remove or alter these hardcoded credentials. The 24-hour session stored in localStorage must remain intact.",
+      "featureId": "feature-create-a-new-page-frontend-src-pages-receiptpage-tsx-this-page-accepts-a-customerid-or-mobile-number-as-a-url-route-parameter-fetches-the-customer-record-and-renders-a-clean-printable-payment-receipt-when-paymentstatus-success-the-receipt-must-include-1-header-vijay-online-centre-and-successful-payment-receipt-2-customer-details-customer-name-mobile-number-service-name-3-payment-details-payment-status-successful-amount-paid-amount-payment-method-upi-qr-paid-to-upi-id-8173064549-okicici-receiver-name-vijay-online-centre-transaction-date-time-4-receipt-number-the-receiptid-voc-timestamp-if-paymentstatus-is-still-pending-show-a-waiting-pending-state-and-poll-every-5-seconds-to-auto-refresh-until-payment-is-confirmed",
+      "featureTitle": "Create a new page `frontend/src/pages/ReceiptPage.tsx`. This page accepts a customerId (or mobile number) as a URL/route parameter, fetches the customer record, and renders a clean printable payment receipt when paymentStatus='success'. The receipt must include: (1) Header — 'Vijay Online Centre' and 'Successful Payment Receipt', (2) Customer Details — Customer Name, Mobile Number, Service Name, (3) Payment Details — Payment Status: SUCCESSFUL ✅, Amount Paid: ₹{amount}, Payment Method: UPI QR, Paid To (UPI ID): 8173064549@okicici, Receiver Name: Vijay Online Centre, Transaction Date & Time, (4) Receipt Number — the receiptId (VOC+timestamp). If paymentStatus is still 'pending', show a waiting/pending state and poll every 5 seconds to auto-refresh until payment is confirmed.",
       "files": [
-        "frontend/src/hooks/useAdminAuth.ts"
+        "frontend/src/pages/ReceiptPage.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -89,6 +64,117 @@
       ],
       "testIds": [
         "REQ-4"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-style-receiptpage-with-a-clean-white-print-optimized-design-center-aligned-header-with-the-business-name-in-bold-a-large-green-success-text-badge-at-the-top-clearly-separated-sections-for-customer-and-payment-details-in-a-card-layout-and-a-receipt-number-displayed-prominently-at-the-bottom-use-the-existing-navy-saffron-color-palette-for-branding-accents-apply-print-specific-css-media-print-to-hide-navigation-buttons-and-non-receipt-content-when-printing",
+      "featureTitle": "Style ReceiptPage with a clean, white, print-optimized design: center-aligned header with the business name in bold, a large green 'SUCCESS' text/badge at the top, clearly separated sections for customer and payment details in a card layout, and a receipt number displayed prominently at the bottom. Use the existing navy/saffron color palette for branding accents. Apply print-specific CSS (@media print) to hide navigation, buttons, and non-receipt content when printing.",
+      "files": [
+        "frontend/src/pages/ReceiptPage.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "qr-code@1.0.0",
+        "camera@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0"
+      ],
+      "testIds": [
+        "REQ-5"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-add-a-print-receipt-button-and-a-download-slip-button-to-receiptpage-the-print-button-triggers-window-print-the-download-slip-button-uses-the-browser-s-print-to-pdf-flow-or-a-client-side-html-to-pdf-library-such-as-html2canvas-jspdf-to-generate-and-download-a-pdf-of-the-receipt-named-voc-receipt-receiptid-pdf",
+      "featureTitle": "Add a 'Print Receipt' button and a 'Download Slip' button to ReceiptPage. The Print button triggers window.print(). The Download Slip button uses the browser's print-to-PDF flow (or a client-side HTML-to-PDF library such as html2canvas + jsPDF) to generate and download a PDF of the receipt named 'VOC-Receipt-{receiptId}.pdf'.",
+      "files": [
+        "frontend/src/pages/ReceiptPage.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "qr-code@1.0.0",
+        "camera@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0"
+      ],
+      "testIds": [
+        "REQ-6"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-add-a-mobile-number-search-feature-to-receiptpage-accessible-via-a-public-route-render-a-search-input-at-the-top-of-the-page-that-accepts-a-10-digit-mobile-number-on-search-fetch-the-matching-customer-record-and-display-the-receipt-if-paymentstatus-success-or-show-a-payment-pending-message-if-not-yet-paid",
+      "featureTitle": "Add a mobile number search feature to ReceiptPage (accessible via a public route). Render a search input at the top of the page that accepts a 10-digit mobile number. On search, fetch the matching customer record and display the receipt if paymentStatus='success', or show a 'Payment pending' message if not yet paid.",
+      "files": [
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/ReceiptPage.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "qr-code@1.0.0",
+        "camera@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0"
+      ],
+      "testIds": [
+        "REQ-7"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-after-the-customer-completes-the-payment-step-in-paymentpage-tsx-the-success-step-automatically-redirect-the-customer-to-the-receiptpage-for-their-submission-passing-the-customerid-as-a-route-query-parameter",
+      "featureTitle": "After the customer completes the payment step in PaymentPage.tsx (the success step), automatically redirect the customer to the ReceiptPage for their submission, passing the customerId as a route/query parameter.",
+      "files": [
+        "frontend/src/pages/PaymentPage.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "qr-code@1.0.0",
+        "camera@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0"
+      ],
+      "testIds": [
+        "REQ-8"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-register-the-receiptpage-route-in-app-tsx-so-it-is-accessible-at-a-path-such-as-receipt-with-optional-query-params-for-customerid-or-mobile-number-without-requiring-admin-authentication",
+      "featureTitle": "Register the ReceiptPage route in App.tsx so it is accessible at a path such as '/receipt' (with optional query params for customerId or mobile number) without requiring admin authentication.",
+      "files": [
+        "frontend/src/App.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "qr-code@1.0.0",
+        "camera@1.0.0",
+        "authorization@4.0.0",
+        "blob-storage@4.0.0"
+      ],
+      "testIds": [
+        "REQ-9"
       ],
       "confidence": "high"
     }

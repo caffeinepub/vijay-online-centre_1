@@ -1,112 +1,114 @@
-import React, { useState, useEffect } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/sonner";
-import Header from "./components/Header";
-import FloatingSupport from "./components/FloatingSupport";
-import HomePage from "./pages/HomePage";
-import PaymentPage from "./pages/PaymentPage";
-import DashboardPage from "./pages/DashboardPage";
-import AdminPage from "./pages/AdminPage";
-import AdminLoginModal from "./components/AdminLoginModal";
-import { useAdminAuth } from "./hooks/useAdminAuth";
+import React, { useState } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import Header from './components/Header';
+import Footer from './components/Footer';
+import HomePage from './pages/HomePage';
+import PaymentPage from './pages/PaymentPage';
+import AdminPage from './pages/AdminPage';
+import ReceiptPage from './pages/ReceiptPage';
+import AdminLoginModal from './components/AdminLoginModal';
+import { useAdminAuth } from './hooks/useAdminAuth';
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1,
-      staleTime: 30000,
+      retry: 2,
+      staleTime: 0,
     },
   },
 });
 
-type Page = "home" | "payment" | "dashboard" | "admin";
+type Page = 'home' | 'payment' | 'admin' | 'receipt';
+
+interface PageData {
+  customerId?: number;
+}
 
 function AppContent() {
-  const [currentPage, setCurrentPage] = useState<Page>("home");
-  const [selectedService, setSelectedService] = useState<string>("");
-  const [activeAppId, setActiveAppId] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState<Page>('home');
+  const [pageData, setPageData] = useState<PageData>({});
   const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const { isAdminAuthenticated } = useAdminAuth();
 
-  const { isAdminAuthenticated, logout } = useAdminAuth();
-
-  const handleNavigate = (page: string, service?: string) => {
-    if (page === "admin") {
-      if (!isAdminAuthenticated) {
+  const handleNavigate = (page: string, data?: any) => {
+    if (page === 'admin') {
+      if (isAdminAuthenticated()) {
+        setCurrentPage('admin');
+      } else {
         setShowAdminLogin(true);
-        return;
       }
-      setCurrentPage("admin");
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    if (page === 'payment') {
+      setCurrentPage('payment');
+      setPageData({});
+      return;
+    }
+    if (page === 'receipt') {
+      setCurrentPage('receipt');
+      setPageData(data || {});
+      return;
+    }
+    if (page === 'home') {
+      setCurrentPage('home');
+      setPageData({});
       return;
     }
     setCurrentPage(page as Page);
-    if (service) setSelectedService(service);
-    else if (page !== "payment") setSelectedService("");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const handlePaymentSuccess = (appId: string) => {
-    setActiveAppId(appId);
-    setCurrentPage("dashboard");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setPageData(data || {});
   };
 
   const handleAdminLoginSuccess = () => {
     setShowAdminLogin(false);
-    setCurrentPage("admin");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setCurrentPage('admin');
   };
 
-  const handleAdminLogout = () => {
-    logout();
-    setCurrentPage("home");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  // If on admin page but session expired, redirect to home
-  useEffect(() => {
-    if (currentPage === "admin" && !isAdminAuthenticated) {
-      setCurrentPage("home");
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'admin':
+        if (!isAdminAuthenticated()) {
+          if (!showAdminLogin) setShowAdminLogin(true);
+          return <HomePage onNavigate={handleNavigate} />;
+        }
+        return <AdminPage />;
+      case 'payment':
+        return <PaymentPage onNavigate={handleNavigate} />;
+      case 'receipt':
+        return (
+          <ReceiptPage
+            onNavigate={handleNavigate}
+            initialCustomerId={pageData.customerId ?? null}
+          />
+        );
+      case 'home':
+      default:
+        return <HomePage onNavigate={handleNavigate} />;
     }
-  }, [currentPage, isAdminAuthenticated]);
+  };
 
-  const isAdminPage = currentPage === "admin";
+  const showHeaderFooter = currentPage !== 'admin';
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {!isAdminPage && (
-        <Header currentPage={currentPage} onNavigate={handleNavigate} />
-      )}
-
-      <div className="flex-1">
-        {currentPage === "home" && (
-          <HomePage onNavigate={handleNavigate} />
-        )}
-        {currentPage === "payment" && (
-          <PaymentPage
-            selectedService={selectedService || "General Service"}
-            onSuccess={handlePaymentSuccess}
-          />
-        )}
-        {currentPage === "dashboard" && (
-          <DashboardPage
-            onBack={() => handleNavigate("home")}
-            initialAppId={activeAppId || undefined}
-          />
-        )}
-        {currentPage === "admin" && (
-          <AdminPage onLogout={handleAdminLogout} />
-        )}
-      </div>
-
-      {!isAdminPage && <FloatingSupport />}
-
-      {showAdminLogin && (
-        <AdminLoginModal
-          onSuccess={handleAdminLoginSuccess}
-          onCancel={() => setShowAdminLogin(false)}
+    <div className="flex flex-col min-h-screen bg-navy-900">
+      {showHeaderFooter && (
+        <Header
+          currentPage={currentPage}
+          onNavigate={handleNavigate}
+          onAdminLoginClick={() => setShowAdminLogin(true)}
         />
       )}
+
+      <main className="flex-1">
+        {renderPage()}
+      </main>
+
+      {showHeaderFooter && <Footer />}
+
+      <AdminLoginModal
+        isOpen={showAdminLogin}
+        onClose={() => setShowAdminLogin(false)}
+        onSuccess={handleAdminLoginSuccess}
+      />
     </div>
   );
 }
@@ -115,7 +117,6 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AppContent />
-      <Toaster />
     </QueryClientProvider>
   );
 }

@@ -53,6 +53,18 @@ export const Application = IDL.Record({
   'price' : IDL.Opt(IDL.Nat),
   'transactionId' : IDL.Opt(IDL.Text),
 });
+export const Customer = IDL.Record({
+  'id' : IDL.Nat,
+  'service' : IDL.Text,
+  'status' : IDL.Text,
+  'paymentStatus' : IDL.Text,
+  'name' : IDL.Text,
+  'createdAt' : IDL.Int,
+  'paymentDate' : IDL.Opt(IDL.Int),
+  'receiptId' : IDL.Opt(IDL.Text),
+  'mobile' : IDL.Text,
+  'amount' : IDL.Float64,
+});
 export const ManagerNotification = IDL.Record({
   'message' : IDL.Text,
   'timestamp' : IDL.Int,
@@ -67,6 +79,7 @@ export const UserProfile = IDL.Record({
   'role' : IDL.Text,
   'phoneNumber' : IDL.Opt(IDL.Text),
 });
+export const AuthResult = IDL.Record({ 'token' : IDL.Text, 'role' : IDL.Text });
 export const ApplicationFormData = IDL.Record({
   'id' : IDL.Text,
   'service' : IDL.Text,
@@ -103,12 +116,14 @@ export const idlService = IDL.Service({
     ),
   '_caffeineStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+  'addCustomer' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [IDL.Nat], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'canUserPay' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
   'clearNotification' : IDL.Func([IDL.Nat], [IDL.Bool], []),
   'confirmPayment' : IDL.Func([IDL.Text, IDL.Text], [IDL.Bool], []),
   'getActivePaymentPrice' : IDL.Func([], [IDL.Nat], ['query']),
   'getAllApplications' : IDL.Func([], [IDL.Vec(Application)], ['query']),
+  'getAllCustomers' : IDL.Func([], [IDL.Vec(Customer)], ['query']),
   'getAllNotifications' : IDL.Func(
       [],
       [IDL.Vec(ManagerNotification)],
@@ -155,13 +170,15 @@ export const idlService = IDL.Service({
     ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'isPaymentActive' : IDL.Func([], [IDL.Bool], ['query']),
+  'login' : IDL.Func([IDL.Text, IDL.Text], [IDL.Opt(AuthResult)], ['query']),
+  'markPaymentSuccess' : IDL.Func([IDL.Nat], [], []),
   'rejectApplication' : IDL.Func(
       [IDL.Text, IDL.Text, IDL.Text],
       [IDL.Bool],
       [],
     ),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
-  'setActivePrice' : IDL.Func([IDL.Nat], [], []),
+  'setActivePrice' : IDL.Func([IDL.Nat, IDL.Text], [], []),
   'setApplicationFee' : IDL.Func([IDL.Text, IDL.Nat, IDL.Text], [IDL.Bool], []),
   'setPaymentQR' : IDL.Func([ExternalBlob], [], []),
   'setServicePrice' : IDL.Func(
@@ -176,6 +193,9 @@ export const idlService = IDL.Service({
       [IDL.Bool],
       [],
     ),
+  'updateCustomer' : IDL.Func([Customer], [], []),
+  'updateCustomerAmount' : IDL.Func([IDL.Nat, IDL.Float64], [], []),
+  'updateCustomerStatus' : IDL.Func([IDL.Nat, IDL.Text], [], []),
 });
 
 export const idlInitArgs = [];
@@ -223,6 +243,18 @@ export const idlFactory = ({ IDL }) => {
     'price' : IDL.Opt(IDL.Nat),
     'transactionId' : IDL.Opt(IDL.Text),
   });
+  const Customer = IDL.Record({
+    'id' : IDL.Nat,
+    'service' : IDL.Text,
+    'status' : IDL.Text,
+    'paymentStatus' : IDL.Text,
+    'name' : IDL.Text,
+    'createdAt' : IDL.Int,
+    'paymentDate' : IDL.Opt(IDL.Int),
+    'receiptId' : IDL.Opt(IDL.Text),
+    'mobile' : IDL.Text,
+    'amount' : IDL.Float64,
+  });
   const ManagerNotification = IDL.Record({
     'message' : IDL.Text,
     'timestamp' : IDL.Int,
@@ -237,6 +269,7 @@ export const idlFactory = ({ IDL }) => {
     'role' : IDL.Text,
     'phoneNumber' : IDL.Opt(IDL.Text),
   });
+  const AuthResult = IDL.Record({ 'token' : IDL.Text, 'role' : IDL.Text });
   const ApplicationFormData = IDL.Record({
     'id' : IDL.Text,
     'service' : IDL.Text,
@@ -273,12 +306,14 @@ export const idlFactory = ({ IDL }) => {
       ),
     '_caffeineStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+    'addCustomer' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [IDL.Nat], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'canUserPay' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
     'clearNotification' : IDL.Func([IDL.Nat], [IDL.Bool], []),
     'confirmPayment' : IDL.Func([IDL.Text, IDL.Text], [IDL.Bool], []),
     'getActivePaymentPrice' : IDL.Func([], [IDL.Nat], ['query']),
     'getAllApplications' : IDL.Func([], [IDL.Vec(Application)], ['query']),
+    'getAllCustomers' : IDL.Func([], [IDL.Vec(Customer)], ['query']),
     'getAllNotifications' : IDL.Func(
         [],
         [IDL.Vec(ManagerNotification)],
@@ -329,13 +364,15 @@ export const idlFactory = ({ IDL }) => {
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'isPaymentActive' : IDL.Func([], [IDL.Bool], ['query']),
+    'login' : IDL.Func([IDL.Text, IDL.Text], [IDL.Opt(AuthResult)], ['query']),
+    'markPaymentSuccess' : IDL.Func([IDL.Nat], [], []),
     'rejectApplication' : IDL.Func(
         [IDL.Text, IDL.Text, IDL.Text],
         [IDL.Bool],
         [],
       ),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
-    'setActivePrice' : IDL.Func([IDL.Nat], [], []),
+    'setActivePrice' : IDL.Func([IDL.Nat, IDL.Text], [], []),
     'setApplicationFee' : IDL.Func(
         [IDL.Text, IDL.Nat, IDL.Text],
         [IDL.Bool],
@@ -354,6 +391,9 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Bool],
         [],
       ),
+    'updateCustomer' : IDL.Func([Customer], [], []),
+    'updateCustomerAmount' : IDL.Func([IDL.Nat, IDL.Float64], [], []),
+    'updateCustomerStatus' : IDL.Func([IDL.Nat, IDL.Text], [], []),
   });
 };
 

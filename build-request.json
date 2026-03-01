@@ -1,95 +1,203 @@
 {
   "kind": "build_request",
-  "title": "Fix Refresh Button, Active Count Sync, Set Price, and Admin Login",
+  "title": "Add Automatic Payment Receipt System",
   "projectName": "Vijay Online Centre",
   "priority": "high",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Rewrite the Refresh button handler in AdminPage.tsx to forcefully invalidate and re-fetch all application data from the backend (bypassing any cache). The refetch must use React Query's refetch with staleTime=0 and must work correctly on all mobile browsers including Chrome on OnePlus/Android devices. After clicking Refresh, the application list must visibly update with the latest rows from the Applications table.",
-      "target": "frontend",
+      "text": "Extend the backend Customer record to include paymentStatus (text: 'pending' | 'success'), paymentDate (optional timestamp in nanoseconds), and receiptId (optional text, format VOC+timestamp digits). Add a new update function `markPaymentSuccess(customerId)` that sets paymentStatus='success', paymentDate=current time, and generates a unique receiptId (e.g., 'VOC' + Int.toText(Time.now() / 1_000_000) truncated to a short numeric suffix). Ensure existing records default paymentStatus to 'pending' and receiptId to null.",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-5"
+          "msg-4"
         ],
         "quotes": [
-          "Force Refresh Logic: Rewrite the 'Refresh' button code to forcefully re-fetch the latest rows from the Applications table. It must work on all mobile browsers, including phone",
-          "Update the API sync code so the Refresh button actually pulls data from the server."
+          "Admin or system must mark record: status = \"paid\", paymentStatus = \"success\", paymentDate = current timestamp",
+          "Generate unique receipt ID: VOC + timestamp"
         ]
       },
       "acceptanceCriteria": [
-        "Clicking Refresh on an OnePlus/Android device triggers a network call to the backend and returns updated data.",
-        "The application list updates visually after each Refresh click without requiring a page reload.",
-        "Refresh does not use stale cached data — it always fetches fresh data from the server.",
-        "The button is not disabled or throttled in a way that prevents repeated refreshes on mobile."
+        "Customer record has paymentStatus, paymentDate, and receiptId fields.",
+        "Calling markPaymentSuccess sets paymentStatus to 'success', paymentDate to current timestamp, and receiptId to a unique VOC-prefixed string.",
+        "Existing customers without these fields default to paymentStatus='pending' and null receiptId.",
+        "receiptId format matches VOC followed by numeric digits (e.g., VOC17092026)."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Fix the active submission count display in the AdminPage so that after clicking Refresh, the count immediately reflects the real number of submitted applications instead of showing '00'. The count must be derived directly from the freshly fetched application data.",
+      "text": "Add a React Query mutation hook `useMarkPaymentSuccess` in `frontend/src/hooks/useQueries.ts` that calls the backend `markPaymentSuccess` function and invalidates the customers query on success.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-5"
+          "msg-4"
         ],
         "quotes": [
-          "Sync Active Count: Clicking refresh must immediately change the '00' to the real number of submissions."
+          "When admin marks payment successful: customer receipt page must auto refresh and show receipt instantly"
         ]
       },
       "acceptanceCriteria": [
-        "Before any refresh, the count may show 0 as a loading state, but after Refresh completes, it shows the real number of applications.",
-        "The count does not remain at '00' after a successful data fetch.",
-        "The count is computed from the live fetched list, not a hardcoded or stale value."
+        "useMarkPaymentSuccess mutation calls the backend markPaymentSuccess function.",
+        "On success, the customers query cache is invalidated so all consumers re-fetch fresh data.",
+        "The hook is exported from useQueries.ts for use in AdminPage and ReceiptPage."
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Fix the Set Price mutation in useQueries.ts and AdminPage.tsx so that submitting a fee (e.g., 200) does not return an 'Unauthorized' error. The admin actor must be properly authenticated before calling the setFee backend function. After a successful Set Price call, the updated fee must be immediately visible to customers on the DashboardPage without requiring a page reload.",
-      "target": "both",
+      "text": "Add a 'Mark as Paid' button in AdminPage.tsx for each customer record whose paymentStatus is not 'success'. Clicking it calls the useMarkPaymentSuccess mutation for that customer, transitions the button to a loading state, and on success shows a visual confirmation (green checkmark / 'Paid' badge) and disables the button. Display the receiptId in the admin row once available.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-5"
+          "msg-4"
         ],
         "quotes": [
-          "Set Price Fix: Ensure that when I click 'Set Price', the 200 amount is saved and visible to customers immediately. Remove any 'Unauthorized' errors."
+          "Admin or system must mark record: status = \"paid\"",
+          "When admin marks payment successful: customer receipt page must auto refresh and show receipt instantly"
         ]
       },
       "acceptanceCriteria": [
-        "Clicking 'Set Price' with a value of 200 does not produce an 'Unauthorized' error.",
-        "The fee is persisted in the backend and returned in subsequent application fetches.",
-        "Customers viewing the DashboardPage see the updated fee amount immediately after the admin saves it.",
-        "The admin actor used for the setFee call carries a valid identity/session."
+        "Each customer row in AdminPage shows a 'Mark as Paid' button when paymentStatus is not 'success'.",
+        "Button enters loading state during mutation and is replaced with a green 'Paid' badge after success.",
+        "The receiptId value (e.g., VOC17092026) is visible in the admin row after being set.",
+        "Already-paid customers show the Paid badge and receiptId without a 'Mark as Paid' button."
       ]
     },
     {
       "id": "REQ-4",
-      "text": "Ensure the admin login credentials vijay@123 (username: vijay, password: 123) and vijay@2026 (username: vijay, password: 2026) both continue to work in the useAdminAuth.ts hook. Do not remove or alter these hardcoded credentials. The 24-hour session stored in localStorage must remain intact.",
+      "text": "Create a new page `frontend/src/pages/ReceiptPage.tsx`. This page accepts a customerId (or mobile number) as a URL/route parameter, fetches the customer record, and renders a clean printable payment receipt when paymentStatus='success'. The receipt must include: (1) Header — 'Vijay Online Centre' and 'Successful Payment Receipt', (2) Customer Details — Customer Name, Mobile Number, Service Name, (3) Payment Details — Payment Status: SUCCESSFUL ✅, Amount Paid: ₹{amount}, Payment Method: UPI QR, Paid To (UPI ID): 8173064549@okicici, Receiver Name: Vijay Online Centre, Transaction Date & Time, (4) Receipt Number — the receiptId (VOC+timestamp). If paymentStatus is still 'pending', show a waiting/pending state and poll every 5 seconds to auto-refresh until payment is confirmed.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-5"
+          "msg-4"
         ],
         "quotes": [
-          "Admin Login: Keep vijay@123 and vijay@2026 as the working login."
+          "Automatically generate a digital receipt (payment slip)",
+          "Paid To (UPI ID): 8173064549@okicici",
+          "Receiver Name: Vijay Online Centre",
+          "customer receipt page must auto refresh and show receipt instantly"
         ]
       },
       "acceptanceCriteria": [
-        "Logging in with username 'vijay' and password '123' succeeds and grants admin access.",
-        "Logging in with username 'vijay' and password '2026' succeeds and grants admin access.",
-        "Invalid credentials still correctly reject login.",
-        "Session persists for 24 hours in localStorage."
+        "ReceiptPage renders all required fields: customer name, mobile, service name, amount, UPI ID 8173064549@okicici, receiver name, transaction date/time, and receiptId.",
+        "Header displays 'Vijay Online Centre' and 'Successful Payment Receipt'.",
+        "Payment status shows a green 'SUCCESSFUL ✅' badge.",
+        "When paymentStatus is 'pending', the page shows a pending state and polls the backend every 5 seconds.",
+        "Once paymentStatus becomes 'success', the receipt renders automatically without a manual page refresh."
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "text": "Style ReceiptPage with a clean, white, print-optimized design: center-aligned header with the business name in bold, a large green 'SUCCESS' text/badge at the top, clearly separated sections for customer and payment details in a card layout, and a receipt number displayed prominently at the bottom. Use the existing navy/saffron color palette for branding accents. Apply print-specific CSS (@media print) to hide navigation, buttons, and non-receipt content when printing.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "Clean white printable design",
+          "Center aligned header",
+          "Green success badge",
+          "Show big SUCCESS text"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Receipt is displayed on a white background with center-aligned header.",
+        "A large green 'SUCCESS' badge/text is prominently shown.",
+        "Customer details and payment details are in clearly separated, labeled sections.",
+        "Receipt number is displayed at the bottom.",
+        "@media print CSS hides header navigation, buttons, and footer so only the receipt content prints."
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "text": "Add a 'Print Receipt' button and a 'Download Slip' button to ReceiptPage. The Print button triggers window.print(). The Download Slip button uses the browser's print-to-PDF flow (or a client-side HTML-to-PDF library such as html2canvas + jsPDF) to generate and download a PDF of the receipt named 'VOC-Receipt-{receiptId}.pdf'.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "Add Print and Download PDF button",
+          "Add button: 'Download Slip'",
+          "Generate PDF version of receipt"
+        ]
+      },
+      "acceptanceCriteria": [
+        "A 'Print Receipt' button calls window.print() and only the receipt content is printed.",
+        "A 'Download Slip' button generates and downloads a PDF file of the receipt.",
+        "The downloaded file is named using the pattern VOC-Receipt-{receiptId}.pdf.",
+        "Both buttons are hidden during print (@media print)."
+      ]
+    },
+    {
+      "id": "REQ-7",
+      "text": "Add a mobile number search feature to ReceiptPage (accessible via a public route). Render a search input at the top of the page that accepts a 10-digit mobile number. On search, fetch the matching customer record and display the receipt if paymentStatus='success', or show a 'Payment pending' message if not yet paid.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "Receipt must be viewable anytime using mobile number search"
+        ]
+      },
+      "acceptanceCriteria": [
+        "A mobile number input field is visible on the ReceiptPage when no customerId is pre-filled.",
+        "Entering a valid mobile number and submitting fetches and displays the matching receipt.",
+        "If no matching paid record is found, a clear 'No paid receipt found for this mobile number' message is shown.",
+        "If the record exists but paymentStatus is pending, a 'Payment pending' message is shown."
+      ]
+    },
+    {
+      "id": "REQ-8",
+      "text": "After the customer completes the payment step in PaymentPage.tsx (the success step), automatically redirect the customer to the ReceiptPage for their submission, passing the customerId as a route/query parameter.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "Customer automatically redirected to receipt page"
+        ]
+      },
+      "acceptanceCriteria": [
+        "After the payment step in PaymentPage shows success, the user is automatically navigated to the ReceiptPage.",
+        "The customerId is passed as a parameter so the receipt can be loaded directly.",
+        "The ReceiptPage correctly loads the customer record using the passed customerId."
+      ]
+    },
+    {
+      "id": "REQ-9",
+      "text": "Register the ReceiptPage route in App.tsx so it is accessible at a path such as '/receipt' (with optional query params for customerId or mobile number) without requiring admin authentication.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "Customer automatically redirected to receipt page",
+          "Receipt must be viewable anytime using mobile number search"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Navigating to '/receipt' renders ReceiptPage without requiring login.",
+        "Query parameters (customerId or mobile) are read and used to load the appropriate receipt.",
+        "The route is added to App.tsx alongside existing home/payment/admin routes."
       ]
     }
   ],
   "constraints": [
-    "Do not change the hardcoded admin credentials vijay@123 and vijay@2026 in useAdminAuth.ts.",
+    "UPI ID must be exactly '8173064549@okicici' and Receiver Name must be 'Vijay Online Centre' — hardcoded in the receipt.",
+    "Receipt ID format must be 'VOC' followed by numeric timestamp digits (e.g., VOC17092026).",
+    "Do not change existing admin credentials or authentication logic.",
     "Do not modify files listed in frontend.immutablePaths.",
-    "Refresh logic must work on mobile browsers (Android/Chrome/OnePlus) — avoid desktop-only APIs."
+    "All Motoko changes must remain in backend/main.mo as a single actor."
   ],
   "nonGoals": [
-    "Adding new authentication systems or replacing Internet Identity.",
-    "Redesigning the admin dashboard UI layout.",
-    "Adding new application fields or backend schema changes unrelated to these fixes."
+    "Real-time WebSocket push — polling every 5 seconds is sufficient for live update.",
+    "Email or SMS delivery of receipts.",
+    "Payment gateway integration — QR-based UPI payment flow already exists; this only adds receipt generation.",
+    "Multi-language support — English only."
   ],
   "imageRequirements": {
     "required": [],

@@ -1,48 +1,76 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Admin dashboard project with Applications table management, featuring Refresh button (mobile-compatible), active count sync, Set Price functionality, and admin login system.",
+  "summary": "Vijay Online Centre app with automatic payment receipt system. After successful UPI QR payment, the system auto-generates a digital receipt (payment slip) with customer details, payment details, unique receipt ID (VOC+timestamp), and allows PDF download. Admin marks payment as paid which triggers receipt generation and live updates.",
   "architectural_notes": [
-    "Admin credentials: vijay@123 / vijay@2026 must remain functional",
-    "Refresh button must use server-side API call to re-fetch Applications table data (no cache)",
-    "Set Price action must persist amount and be immediately visible to customers without auth errors"
+    "Receipt ID format: VOC + timestamp (e.g., VOC17092026)",
+    "UPI payment details: Paid To 8173064549@okicici, Receiver Name: Vijay Online Centre",
+    "Payment fields: status, paymentStatus, paymentDate on customer records"
   ],
-  "known_issues": [
-    "Refresh button does not update data on OnePlus (and likely other mobile browsers)",
-    "Active count shows '00' instead of real submission count after refresh",
-    "Set Price returns 'Unauthorized' errors and amount may not save correctly"
-  ],
-  "isFixRequest": true,
+  "known_issues": [],
+  "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-rewrite-the-refresh-button-handler-in-adminpage-tsx-to-forcefully-invalidate-and-re-fetch-all-application-data-from-the-backend-bypassing-any-cache-the-refetch-must-use-react-query-s-refetch-with-staletime-0-and-must-work-correctly-on-all-mobile-browsers-including-chrome-on-oneplus-android-devices-after-clicking-refresh-the-application-list-must-visibly-update-with-the-latest-rows-from-the-applications-table",
-      "title": "Rewrite the Refresh button handler in AdminPage.tsx to forcefully invalidate and re-fetch all application data from the backend (bypassing any cache). The refetch must use React Query's refetch with staleTime=0 and must work correctly on all mobile browsers including Chrome on OnePlus/Android devices. After clicking Refresh, the application list must visibly update with the latest rows from the Applications table.",
-      "reqIds": [
-        "REQ-1"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-fix-the-active-submission-count-display-in-the-adminpage-so-that-after-clicking-refresh-the-count-immediately-reflects-the-real-number-of-submitted-applications-instead-of-showing-00-the-count-must-be-derived-directly-from-the-freshly-fetched-application-data",
-      "title": "Fix the active submission count display in the AdminPage so that after clicking Refresh, the count immediately reflects the real number of submitted applications instead of showing '00'. The count must be derived directly from the freshly fetched application data.",
+      "id": "feature-add-a-react-query-mutation-hook-usemarkpaymentsuccess-in-frontend-src-hooks-usequeries-ts-that-calls-the-backend-markpaymentsuccess-function-and-invalidates-the-customers-query-on-success",
+      "title": "Add a React Query mutation hook `useMarkPaymentSuccess` in `frontend/src/hooks/useQueries.ts` that calls the backend `markPaymentSuccess` function and invalidates the customers query on success.",
       "reqIds": [
         "REQ-2"
       ],
       "version": 1
     },
     {
-      "id": "feature-fix-the-set-price-mutation-in-usequeries-ts-and-adminpage-tsx-so-that-submitting-a-fee-e-g-200-does-not-return-an-unauthorized-error-the-admin-actor-must-be-properly-authenticated-before-calling-the-setfee-backend-function-after-a-successful-set-price-call-the-updated-fee-must-be-immediately-visible-to-customers-on-the-dashboardpage-without-requiring-a-page-reload",
-      "title": "Fix the Set Price mutation in useQueries.ts and AdminPage.tsx so that submitting a fee (e.g., 200) does not return an 'Unauthorized' error. The admin actor must be properly authenticated before calling the setFee backend function. After a successful Set Price call, the updated fee must be immediately visible to customers on the DashboardPage without requiring a page reload.",
+      "id": "feature-add-a-mark-as-paid-button-in-adminpage-tsx-for-each-customer-record-whose-paymentstatus-is-not-success-clicking-it-calls-the-usemarkpaymentsuccess-mutation-for-that-customer-transitions-the-button-to-a-loading-state-and-on-success-shows-a-visual-confirmation-green-checkmark-paid-badge-and-disables-the-button-display-the-receiptid-in-the-admin-row-once-available",
+      "title": "Add a 'Mark as Paid' button in AdminPage.tsx for each customer record whose paymentStatus is not 'success'. Clicking it calls the useMarkPaymentSuccess mutation for that customer, transitions the button to a loading state, and on success shows a visual confirmation (green checkmark / 'Paid' badge) and disables the button. Display the receiptId in the admin row once available.",
       "reqIds": [
         "REQ-3"
       ],
       "version": 1
     },
     {
-      "id": "feature-ensure-the-admin-login-credentials-vijay-123-username-vijay-password-123-and-vijay-2026-username-vijay-password-2026-both-continue-to-work-in-the-useadminauth-ts-hook-do-not-remove-or-alter-these-hardcoded-credentials-the-24-hour-session-stored-in-localstorage-must-remain-intact",
-      "title": "Ensure the admin login credentials vijay@123 (username: vijay, password: 123) and vijay@2026 (username: vijay, password: 2026) both continue to work in the useAdminAuth.ts hook. Do not remove or alter these hardcoded credentials. The 24-hour session stored in localStorage must remain intact.",
+      "id": "feature-create-a-new-page-frontend-src-pages-receiptpage-tsx-this-page-accepts-a-customerid-or-mobile-number-as-a-url-route-parameter-fetches-the-customer-record-and-renders-a-clean-printable-payment-receipt-when-paymentstatus-success-the-receipt-must-include-1-header-vijay-online-centre-and-successful-payment-receipt-2-customer-details-customer-name-mobile-number-service-name-3-payment-details-payment-status-successful-amount-paid-amount-payment-method-upi-qr-paid-to-upi-id-8173064549-okicici-receiver-name-vijay-online-centre-transaction-date-time-4-receipt-number-the-receiptid-voc-timestamp-if-paymentstatus-is-still-pending-show-a-waiting-pending-state-and-poll-every-5-seconds-to-auto-refresh-until-payment-is-confirmed",
+      "title": "Create a new page `frontend/src/pages/ReceiptPage.tsx`. This page accepts a customerId (or mobile number) as a URL/route parameter, fetches the customer record, and renders a clean printable payment receipt when paymentStatus='success'. The receipt must include: (1) Header — 'Vijay Online Centre' and 'Successful Payment Receipt', (2) Customer Details — Customer Name, Mobile Number, Service Name, (3) Payment Details — Payment Status: SUCCESSFUL ✅, Amount Paid: ₹{amount}, Payment Method: UPI QR, Paid To (UPI ID): 8173064549@okicici, Receiver Name: Vijay Online Centre, Transaction Date & Time, (4) Receipt Number — the receiptId (VOC+timestamp). If paymentStatus is still 'pending', show a waiting/pending state and poll every 5 seconds to auto-refresh until payment is confirmed.",
       "reqIds": [
         "REQ-4"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-style-receiptpage-with-a-clean-white-print-optimized-design-center-aligned-header-with-the-business-name-in-bold-a-large-green-success-text-badge-at-the-top-clearly-separated-sections-for-customer-and-payment-details-in-a-card-layout-and-a-receipt-number-displayed-prominently-at-the-bottom-use-the-existing-navy-saffron-color-palette-for-branding-accents-apply-print-specific-css-media-print-to-hide-navigation-buttons-and-non-receipt-content-when-printing",
+      "title": "Style ReceiptPage with a clean, white, print-optimized design: center-aligned header with the business name in bold, a large green 'SUCCESS' text/badge at the top, clearly separated sections for customer and payment details in a card layout, and a receipt number displayed prominently at the bottom. Use the existing navy/saffron color palette for branding accents. Apply print-specific CSS (@media print) to hide navigation, buttons, and non-receipt content when printing.",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-print-receipt-button-and-a-download-slip-button-to-receiptpage-the-print-button-triggers-window-print-the-download-slip-button-uses-the-browser-s-print-to-pdf-flow-or-a-client-side-html-to-pdf-library-such-as-html2canvas-jspdf-to-generate-and-download-a-pdf-of-the-receipt-named-voc-receipt-receiptid-pdf",
+      "title": "Add a 'Print Receipt' button and a 'Download Slip' button to ReceiptPage. The Print button triggers window.print(). The Download Slip button uses the browser's print-to-PDF flow (or a client-side HTML-to-PDF library such as html2canvas + jsPDF) to generate and download a PDF of the receipt named 'VOC-Receipt-{receiptId}.pdf'.",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-mobile-number-search-feature-to-receiptpage-accessible-via-a-public-route-render-a-search-input-at-the-top-of-the-page-that-accepts-a-10-digit-mobile-number-on-search-fetch-the-matching-customer-record-and-display-the-receipt-if-paymentstatus-success-or-show-a-payment-pending-message-if-not-yet-paid",
+      "title": "Add a mobile number search feature to ReceiptPage (accessible via a public route). Render a search input at the top of the page that accepts a 10-digit mobile number. On search, fetch the matching customer record and display the receipt if paymentStatus='success', or show a 'Payment pending' message if not yet paid.",
+      "reqIds": [
+        "REQ-7"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-after-the-customer-completes-the-payment-step-in-paymentpage-tsx-the-success-step-automatically-redirect-the-customer-to-the-receiptpage-for-their-submission-passing-the-customerid-as-a-route-query-parameter",
+      "title": "After the customer completes the payment step in PaymentPage.tsx (the success step), automatically redirect the customer to the ReceiptPage for their submission, passing the customerId as a route/query parameter.",
+      "reqIds": [
+        "REQ-8"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-register-the-receiptpage-route-in-app-tsx-so-it-is-accessible-at-a-path-such-as-receipt-with-optional-query-params-for-customerid-or-mobile-number-without-requiring-admin-authentication",
+      "title": "Register the ReceiptPage route in App.tsx so it is accessible at a path such as '/receipt' (with optional query params for customerId or mobile number) without requiring admin authentication.",
+      "reqIds": [
+        "REQ-9"
       ],
       "version": 1
     }
@@ -50,26 +78,46 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Fix Refresh button to forcefully re-fetch latest rows from Applications table, working on all mobile browsers including OnePlus",
+      "summary": "Payment success flow: Admin marks record with status=paid, paymentStatus=success, paymentDate=timestamp after QR payment",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-2",
-      "summary": "Sync active count: clicking Refresh must immediately update '00' to the real number of submissions",
+      "summary": "Auto receipt generation when paymentStatus=success with customer details, payment details, UPI ID 8173064549@okicici, and unique receipt ID (VOC+timestamp)",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-3",
-      "summary": "Fix Set Price button so 200 amount is saved and visible to customers immediately, removing Unauthorized errors",
+      "summary": "Receipt UI: clean white printable design, center-aligned header, green success badge, big SUCCESS text, Print and Download PDF buttons",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-4",
-      "summary": "Maintain admin login credentials: vijay@123 / vijay@2026",
+      "summary": "Customer auto-redirected to receipt page after payment; receipt viewable anytime via mobile number search",
       "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "PDF download (Download Slip button) to generate PDF version of receipt",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Live update: when admin marks payment successful, customer receipt page auto-refreshes and shows receipt instantly",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-7",
+      "summary": "Extend the backend Customer record to include paymentStatus (text: 'pending' | 'success'), paymentDate (optional timestamp in nanoseconds), and receiptId (optional text, format VOC+timestamp digits). Add a new update function `markPaymentSuccess(customerId)` that sets paymentStatus='success', paymentDate=current time, and generates a unique receiptId (e.g., 'VOC' + Int.toText(Time.now() / 1_000_000) truncated to a short numeric suffix). Ensure existing records default paymentStatus to 'pending' and receiptId to null.",
+      "reqIds": [
+        "REQ-1"
+      ],
       "status": "pending"
     }
   ],

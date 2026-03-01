@@ -35,6 +35,19 @@ export type ApplicationStatus = { 'submitted' : null } |
   { 'rejected' : null } |
   { 'paymentVerifying' : null } |
   { 'paymentPending' : null };
+export interface AuthResult { 'token' : string, 'role' : string }
+export interface Customer {
+  'id' : bigint,
+  'service' : string,
+  'status' : string,
+  'paymentStatus' : string,
+  'name' : string,
+  'createdAt' : bigint,
+  'paymentDate' : [] | [bigint],
+  'receiptId' : [] | [string],
+  'mobile' : string,
+  'amount' : number,
+}
 export interface Document { 'content' : ExternalBlob, 'name' : string }
 export type ExternalBlob = Uint8Array;
 export interface ManagerNotification {
@@ -83,12 +96,14 @@ export interface _SERVICE {
   >,
   '_caffeineStorageUpdateGatewayPrincipals' : ActorMethod<[], undefined>,
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  'addCustomer' : ActorMethod<[string, string, string], bigint>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'canUserPay' : ActorMethod<[string], boolean>,
   'clearNotification' : ActorMethod<[bigint], boolean>,
   'confirmPayment' : ActorMethod<[string, string], boolean>,
   'getActivePaymentPrice' : ActorMethod<[], bigint>,
   'getAllApplications' : ActorMethod<[], Array<Application>>,
+  'getAllCustomers' : ActorMethod<[], Array<Customer>>,
   'getAllNotifications' : ActorMethod<[], Array<ManagerNotification>>,
   'getAllServices' : ActorMethod<[], Array<Service>>,
   'getApplication' : ActorMethod<[string], [] | [Application]>,
@@ -111,15 +126,20 @@ export interface _SERVICE {
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'isPaymentActive' : ActorMethod<[], boolean>,
+  'login' : ActorMethod<[string, string], [] | [AuthResult]>,
+  'markPaymentSuccess' : ActorMethod<[bigint], undefined>,
   'rejectApplication' : ActorMethod<[string, string, string], boolean>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
-  'setActivePrice' : ActorMethod<[bigint], undefined>,
+  'setActivePrice' : ActorMethod<[bigint, string], undefined>,
   'setApplicationFee' : ActorMethod<[string, bigint, string], boolean>,
   'setPaymentQR' : ActorMethod<[ExternalBlob], undefined>,
   'setServicePrice' : ActorMethod<[bigint, string, bigint, string], boolean>,
   'submitApplication' : ActorMethod<[ApplicationFormData], Application>,
   'submitPayment' : ActorMethod<[string, string], boolean>,
   'updateApplicationStage' : ActorMethod<[string, bigint, string], boolean>,
+  'updateCustomer' : ActorMethod<[Customer], undefined>,
+  'updateCustomerAmount' : ActorMethod<[bigint, number], undefined>,
+  'updateCustomerStatus' : ActorMethod<[bigint, string], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

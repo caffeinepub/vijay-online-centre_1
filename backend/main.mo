@@ -1,21 +1,19 @@
-import Iter "mo:core/Iter";
-import Map "mo:core/Map";
-import Runtime "mo:core/Runtime";
-import Text "mo:core/Text";
 import Nat "mo:core/Nat";
+import Map "mo:core/Map";
+import Iter "mo:core/Iter";
+import Runtime "mo:core/Runtime";
+import Time "mo:core/Time";
 import Principal "mo:core/Principal";
 import Storage "blob-storage/Storage";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 import MixinStorage "blob-storage/Mixin";
+import Migration "migration";
 
 
-
+(with migration = Migration.run)
 actor {
   include MixinStorage();
-
-  let accessControlState = AccessControl.initState();
-  include MixinAuthorization(accessControlState);
 
   type Document = {
     name : Text;
@@ -74,14 +72,44 @@ actor {
     price : Nat;
   };
 
+  public type AuthResult = {
+    role : Text;
+    token : Text;
+  };
+
+  type Customer = {
+    id : Nat;
+    name : Text;
+    mobile : Text;
+    service : Text;
+    amount : Float;
+    status : Text;
+    createdAt : Int;
+    paymentStatus : Text; // new: "pending", "success"
+    paymentDate : ?Int;
+    receiptId : ?Text;
+  };
+
   let applications = Map.empty<Text, Application>();
   let userProfiles = Map.empty<Principal, UserProfile>();
   let managerNotifications = Map.empty<Nat, ManagerNotification>();
   var notificationCounter = 0;
   let services = Map.empty<Nat, Service>();
 
+  let accessControlState = AccessControl.initState();
+  include MixinAuthorization(accessControlState);
+
   var paymentQR : ?Storage.ExternalBlob = null;
   var currentPrice : Nat = 0;
+  var nextCustomerId : Nat = 1;
+  let customers = Map.empty<Nat, Customer>();
+
+  // Private helper — never exposed as a canister endpoint
+  private func isValidAdminToken(token : Text) : Bool {
+    token == "VIJAY_ADMIN_TOKEN";
+  };
+
+  // ── Profile endpoints ────────────────────────────────────────────────
 
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
@@ -103,6 +131,8 @@ actor {
     };
     userProfiles.add(caller, profile);
   };
+
+  // ── Application endpoints ────────────────────────────────────────────
 
   public shared ({ caller }) func submitApplication(app : ApplicationFormData) : async Application {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
@@ -144,7 +174,7 @@ actor {
     fee : Nat,
     adminToken : Text,
   ) : async Bool {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not (AccessControl.isAdmin(accessControlState, caller)) and not (isValidAdminToken(adminToken))) {
       Runtime.trap("Unauthorized: Admin privileges required for setting application fees");
     };
 
@@ -207,7 +237,7 @@ actor {
     appId : Text,
     adminToken : Text,
   ) : async Bool {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not (AccessControl.isAdmin(accessControlState, caller)) and not (isValidAdminToken(adminToken))) {
       Runtime.trap("Unauthorized: Admin privileges required for payment confirmation");
     };
 
@@ -236,7 +266,7 @@ actor {
     reason : Text,
     adminToken : Text,
   ) : async Bool {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not (AccessControl.isAdmin(accessControlState, caller)) and not (isValidAdminToken(adminToken))) {
       Runtime.trap("Unauthorized: Admin privileges required to reject applications");
     };
 
@@ -264,7 +294,7 @@ actor {
     stage : Nat,
     adminToken : Text,
   ) : async Bool {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not (AccessControl.isAdmin(accessControlState, caller)) and not (isValidAdminToken(adminToken))) {
       Runtime.trap("Unauthorized: Only admins can update application stages");
     };
 
@@ -302,7 +332,7 @@ actor {
     user : Text,
     adminToken : Text,
   ) : async [Application] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not (AccessControl.isAdmin(accessControlState, caller)) and not (isValidAdminToken(adminToken))) {
       Runtime.trap("Unauthorized: Only admins can filter user applications");
     };
     let filtered = applications.values().filter(
@@ -315,7 +345,7 @@ actor {
     status : ApplicationStatus,
     adminToken : Text,
   ) : async [Application] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not (AccessControl.isAdmin(accessControlState, caller)) and not (isValidAdminToken(adminToken))) {
       Runtime.trap("Unauthorized: Only admins can filter applications by status");
     };
 
@@ -361,8 +391,10 @@ actor {
     managerNotifications.values().toArray();
   };
 
+  // ── Service / payment endpoints ─────────────────────────────────────
+
   public shared ({ caller }) func setServicePrice(serviceId : Nat, name : Text, price : Nat, adminToken : Text) : async Bool {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not (AccessControl.isAdmin(accessControlState, caller)) and not (isValidAdminToken(adminToken))) {
       Runtime.trap("Unauthorized: Admin privileges required for setting service prices");
     };
 
@@ -393,8 +425,8 @@ actor {
     paymentQR := ?blob;
   };
 
-  public shared ({ caller }) func setActivePrice(amount : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+  public shared ({ caller }) func setActivePrice(amount : Nat, adminToken : Text) : async () {
+    if (not (AccessControl.isAdmin(accessControlState, caller)) and not (isValidAdminToken(adminToken))) {
       Runtime.trap("Unauthorized: Only admins can set the payment amount");
     };
     currentPrice := amount;
@@ -430,5 +462,118 @@ actor {
 
   public query func isPaymentActive() : async Bool {
     currentPrice > 0;
+  };
+
+  // ── Authentication ────────────────────────────────────────────────
+
+  public query ({ caller }) func login(username : Text, password : Text) : async ?AuthResult {
+    if (username == "vijay@123" and password == "vijay@2026") {
+      ?{
+        role = "admin";
+        token = "VIJAY_ADMIN_TOKEN";
+      };
+    } else {
+      Runtime.trap("Invalid credentials");
+    };
+  };
+
+  // ── Customer endpoints ────────────────────────────────────────────
+
+  public query ({ caller }) func getAllCustomers() : async [Customer] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admin can get all customers");
+    };
+    customers.values().toArray();
+  };
+
+  public shared ({ caller }) func addCustomer(name : Text, mobile : Text, service : Text) : async Nat {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can add customers");
+    };
+
+    let customer : Customer = {
+      id = nextCustomerId;
+      name;
+      mobile;
+      service;
+      amount = 0.0;
+      status = "active";
+      createdAt = Time.now();
+      paymentStatus = "pending";
+      paymentDate = null;
+      receiptId = null;
+    };
+
+    let id = nextCustomerId;
+    customers.add(id, customer);
+    nextCustomerId += 1;
+    id;
+  };
+
+  public shared ({ caller }) func updateCustomerStatus(id : Nat, status : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admin can update customer status");
+    };
+
+    switch (customers.get(id)) {
+      case (null) { Runtime.trap("Customer not found") };
+      case (?customer) {
+        let updatedCustomer = { customer with status };
+        customers.add(id, updatedCustomer);
+      };
+    };
+  };
+
+  public shared ({ caller }) func updateCustomerAmount(id : Nat, amount : Float) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admin can update customer amount");
+    };
+
+    switch (customers.get(id)) {
+      case (null) { Runtime.trap("Customer not found") };
+      case (?customer) {
+        let updatedCustomer = { customer with amount };
+        customers.add(id, updatedCustomer);
+      };
+    };
+  };
+
+  public shared ({ caller }) func updateCustomer(customer : Customer) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admin can update customer");
+    };
+
+    switch (customers.get(customer.id)) {
+      case (null) { Runtime.trap("Customer not found") };
+      case (?_) {
+        customers.add(customer.id, customer);
+      };
+    };
+  };
+
+  public shared ({ caller }) func markPaymentSuccess(customerId : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admin can mark payment success");
+    };
+
+    switch (customers.get(customerId)) {
+      case (null) { Runtime.trap("Customer not found") };
+      case (?customer) {
+        if (customer.paymentStatus == "success") {
+          Runtime.trap("Payment already marked as success");
+        };
+
+        let timestamp = Time.now() / 1_000_000;
+        let newReceiptId = "VOC" # timestamp.toText();
+
+        let updatedCustomer = {
+          customer with
+          paymentStatus = "success";
+          paymentDate = ?Time.now();
+          receiptId = ?newReceiptId;
+        };
+        customers.add(customerId, updatedCustomer);
+      };
+    };
   };
 };

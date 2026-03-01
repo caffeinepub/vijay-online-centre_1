@@ -1,12 +1,18 @@
 # Specification
 
 ## Summary
-**Goal:** Fix four bugs in the Vijay Online Centre admin panel: the Refresh button not fetching fresh data, the active submission count staying at "00", the Set Price action returning "Unauthorized", and ensuring both admin login credentials continue to work.
+**Goal:** Add an automatic payment receipt system so that once an admin marks a customer's payment as successful, a digital receipt is instantly generated and viewable/printable by the customer.
 
 **Planned changes:**
-- Rewrite the Refresh button handler in AdminPage.tsx to forcefully invalidate and re-fetch all application data from the backend, bypassing any cache, using React Query with staleTime=0, compatible with mobile browsers (Android/Chrome/OnePlus)
-- Fix the active submission count so it is computed from the freshly fetched application list and updates immediately after Refresh completes instead of showing "00"
-- Fix the Set Price mutation in useQueries.ts and AdminPage.tsx so the admin actor is properly authenticated before calling setFee, eliminating the "Unauthorized" error and making the updated fee visible to customers on DashboardPage immediately
-- Preserve both hardcoded admin credentials (vijay/123 and vijay/2026) in useAdminAuth.ts with the 24-hour localStorage session unchanged
+- Extend the backend `Customer` record with `paymentStatus` (pending/success), `paymentDate` (timestamp), and `receiptId` (VOC + numeric digits) fields; add `markPaymentSuccess(customerId)` function
+- Add `useMarkPaymentSuccess` React Query mutation hook that calls the backend and invalidates the customers cache on success
+- Add a "Mark as Paid" button in AdminPage for each unpaid customer row; show a green "Paid" badge and `receiptId` after success
+- Create a new `ReceiptPage` at `/receipt` (public route) displaying a clean, white, print-optimized receipt with customer details, payment details (UPI ID: 8173064549@okicici, Receiver: Vijay Online Centre), and receipt number
+- Show a pending/polling state on ReceiptPage (polls every 5 seconds) until payment is confirmed, then auto-render the receipt
+- Add a mobile number search input on ReceiptPage to look up any receipt by 10-digit mobile number
+- Add "Print Receipt" (window.print()) and "Download Slip" (PDF via html2canvas + jsPDF, named VOC-Receipt-{receiptId}.pdf) buttons on ReceiptPage
+- Apply `@media print` CSS to hide navigation, buttons, and non-receipt content when printing
+- Automatically redirect customers from PaymentPage to ReceiptPage (with customerId param) after the payment step
+- Register the `/receipt` route in App.tsx without admin authentication
 
-**User-visible outcome:** The admin can click Refresh on any mobile browser and see the latest application list with the correct submission count, set a price without errors that instantly reflects for customers, and log in with either vijay@123 or vijay@2026 credentials.
+**User-visible outcome:** After an admin marks a payment as paid, the customer's receipt page instantly shows a styled digital receipt with all payment details, a receipt number, and options to print or download the slip as a PDF. Customers can also look up their receipt anytime by entering their mobile number.

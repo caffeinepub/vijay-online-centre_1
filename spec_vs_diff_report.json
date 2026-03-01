@@ -1,31 +1,67 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-28T16:51:14.509Z",
-  "summary": "The diff implements all four requirements. REQ-1 (Refresh button force-refetch) is addressed in AdminPage.tsx with invalidateQueries + removeQueries + refetch and staleTime:0/gcTime:0 in useQueries.ts. REQ-2 (active count sync) is addressed via live-computed stats from fetched appList. REQ-4 (admin credentials) is preserved in useAdminAuth.ts with both credential pairs and 24-hour localStorage session. REQ-3 (Set Price / Unauthorized fix) is partially addressed with token validation in AdminPage.tsx, but the diff does not clearly show how the admin actor is authenticated at the backend actor level in useQueries.ts to prevent the Unauthorized error.",
+  "generatedAt": "2026-03-01T02:46:45.889Z",
+  "summary": "The diff implements nearly all required features: backend Customer record extension (REQ-1), useMarkPaymentSuccess hook (REQ-2), AdminPage Mark as Paid button (REQ-3), ReceiptPage with required fields (REQ-4), styling with print CSS (REQ-5), Print/Download buttons (REQ-6), mobile number search (REQ-7), PaymentPage auto-redirect (REQ-8), and App.tsx route registration (REQ-9). However, there are notable gaps in REQ-6 (Download Slip named PDF generation) and a separate migration module was added outside of main.mo contrary to constraints.",
   "missing_requirements": [
     {
-      "id": "REQ-3",
-      "requirement": "The admin actor used for the setFee call must carry a valid identity/session so that the backend does not return Unauthorized. After a successful Set Price call, the updated fee must be immediately visible to customers on the DashboardPage without requiring a page reload.",
-      "reason": "The diff shows token validation and error display in AdminPage.tsx, but the truncated useQueries.ts does not show how useSetApplicationFee uses an admin-authenticated actor. The backend main.mo still checks AccessControl.hasPermission for #admin. There is no clear evidence that the actor used in the setFee mutation is admin-authenticated at the ICP identity level. DashboardPage fee visibility after Set Price via query invalidation is also not confirmed in the truncated diff.",
+      "id": "REQ-6",
+      "requirement": "The 'Download Slip' button must use a client-side HTML-to-PDF library (html2canvas + jsPDF) or print-to-PDF to generate and download a PDF named 'VOC-Receipt-{receiptId}.pdf'.",
+      "reason": "The ReceiptPage.tsx diff is truncated and no html2canvas or jsPDF import or usage is visible. There is no confirmed evidence of a named PDF download with the pattern VOC-Receipt-{receiptId}.pdf being generated client-side.",
       "evidence": [
-        "frontend/src/hooks/useQueries.ts",
-        "frontend/src/pages/AdminPage.tsx",
-        "backend/main.mo"
+        "frontend/src/pages/ReceiptPage.tsx"
       ]
     }
   ],
-  "hallucinated_features": [],
+  "hallucinated_features": [
+    {
+      "description": "A separate backend/migration.mo module file was added to handle data migration from old Customer records to new ones with paymentStatus/paymentDate/receiptId fields.",
+      "reason": "The build request constraint explicitly states all Motoko changes must remain in backend/main.mo as a single actor. A separate migration module file was not requested.",
+      "evidence": [
+        "backend/migration.mo",
+        "backend/main.mo"
+      ]
+    },
+    {
+      "description": "A filterPayment dropdown (all/pending/paid) was added to AdminPage for filtering customers by payment status.",
+      "reason": "REQ-3 only asked for a Mark as Paid button, loading state, Paid badge, and receiptId display in admin rows. No payment-status filter UI was requested.",
+      "evidence": [
+        "frontend/src/pages/AdminPage.tsx"
+      ]
+    },
+    {
+      "description": "A Receipt external link button was added in AdminPage rows for paid customers to navigate to ReceiptPage.",
+      "reason": "REQ-3 only specifies showing a Paid badge and receiptId in the admin row. No receipt navigation link from AdminPage was requested.",
+      "evidence": [
+        "frontend/src/pages/AdminPage.tsx",
+        "frontend-file-summaries.txt"
+      ]
+    },
+    {
+      "description": "A paidCustomers stat counter was added to the AdminPage dashboard stats section.",
+      "reason": "REQ-3 only specified per-row UI changes for payment status. No dashboard stat for paid customers count was requested.",
+      "evidence": [
+        "frontend/src/pages/AdminPage.tsx"
+      ]
+    },
+    {
+      "description": "useGetAllCustomers, a separate public query hook with query key 'customers-public', was added to useQueries.ts.",
+      "reason": "REQ-2 only asked for the useMarkPaymentSuccess mutation hook to be added. A separate public customers query hook was not requested.",
+      "evidence": [
+        "frontend/src/hooks/useQueries.ts"
+      ]
+    }
+  ],
   "confidence": 0.72,
   "changed_files": [
     "backend/main.mo",
+    "backend/migration.mo",
     "frontend-file-summaries.txt",
     "frontend/src/App.tsx",
-    "frontend/src/components/AdminLoginModal.tsx",
-    "frontend/src/hooks/useAdminAuth.ts",
     "frontend/src/hooks/useQueries.ts",
     "frontend/src/pages/AdminPage.tsx",
-    "frontend/src/pages/DashboardPage.tsx",
+    "frontend/src/pages/PaymentPage.tsx",
+    "frontend/src/pages/ReceiptPage.tsx",
     "project_state.json"
   ]
 }

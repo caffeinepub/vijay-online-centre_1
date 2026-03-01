@@ -1,79 +1,130 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-28T16:51:14.512Z",
+  "generatedAt": "2026-03-01T02:46:45.892Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 4,
-    "implemented": 4,
+    "total": 9,
+    "implemented": 8,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Rewrite the Refresh button handler in AdminPage.tsx to forcefully invalidate and re-fetch all application data from the backend (bypassing any cache). The refetch must use React Query's refetch with staleTime=0 and must work correctly on all mobile browsers including Chrome on OnePlus/Android devices. After clicking Refresh, the application list must visibly update with the latest rows from the Applications table.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/AdminPage.tsx",
-          "frontend/src/hooks/useQueries.ts"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/AdminPage.tsx",
-          "frontend/src/hooks/useQueries.ts"
-        ]
+        "summary": "Extend the backend Customer record to include paymentStatus (text: 'pending' | 'success'), paymentDate (optional timestamp in nanoseconds), and receiptId (optional text, format VOC+timestamp digits). Add a new update function `markPaymentSuccess(customerId)` that sets paymentStatus='success', paymentDate=current time, and generates a unique receiptId (e.g., 'VOC' + Int.toText(Time.now() / 1_000_000) truncated to a short numeric suffix). Ensure existing records default paymentStatus to 'pending' and receiptId to null.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       },
       {
         "id": "REQ-2",
-        "summary": "Fix the active submission count display in the AdminPage so that after clicking Refresh, the count immediately reflects the real number of submitted applications instead of showing '00'. The count must be derived directly from the freshly fetched application data.",
+        "summary": "Add a React Query mutation hook `useMarkPaymentSuccess` in `frontend/src/hooks/useQueries.ts` that calls the backend `markPaymentSuccess` function and invalidates the customers query on success.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/AdminPage.tsx"
+          "frontend/src/hooks/useQueries.ts"
         ],
         "matchedFiles": [
-          "frontend/src/pages/AdminPage.tsx"
+          "frontend/src/hooks/useQueries.ts"
         ]
       },
       {
         "id": "REQ-3",
-        "summary": "Fix the Set Price mutation in useQueries.ts and AdminPage.tsx so that submitting a fee (e.g., 200) does not return an 'Unauthorized' error. The admin actor must be properly authenticated before calling the setFee backend function. After a successful Set Price call, the updated fee must be immediately visible to customers on the DashboardPage without requiring a page reload.",
+        "summary": "Add a 'Mark as Paid' button in AdminPage.tsx for each customer record whose paymentStatus is not 'success'. Clicking it calls the useMarkPaymentSuccess mutation for that customer, transitions the button to a loading state, and on success shows a visual confirmation (green checkmark / 'Paid' badge) and disables the button. Display the receiptId in the admin row once available.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/pages/AdminPage.tsx",
-          "frontend/src/pages/DashboardPage.tsx"
+          "frontend/src/pages/AdminPage.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/pages/AdminPage.tsx",
-          "frontend/src/pages/DashboardPage.tsx"
+          "frontend/src/pages/AdminPage.tsx"
         ]
       },
       {
         "id": "REQ-4",
-        "summary": "Ensure the admin login credentials vijay@123 (username: vijay, password: 123) and vijay@2026 (username: vijay, password: 2026) both continue to work in the useAdminAuth.ts hook. Do not remove or alter these hardcoded credentials. The 24-hour session stored in localStorage must remain intact.",
+        "summary": "Create a new page `frontend/src/pages/ReceiptPage.tsx`. This page accepts a customerId (or mobile number) as a URL/route parameter, fetches the customer record, and renders a clean printable payment receipt when paymentStatus='success'. The receipt must include: (1) Header — 'Vijay Online Centre' and 'Successful Payment Receipt', (2) Customer Details — Customer Name, Mobile Number, Service Name, (3) Payment Details — Payment Status: SUCCESSFUL ✅, Amount Paid: ₹{amount}, Payment Method: UPI QR, Paid To (UPI ID): 8173064549@okicici, Receiver Name: Vijay Online Centre, Transaction Date & Time, (4) Receipt Number — the receiptId (VOC+timestamp). If paymentStatus is still 'pending', show a waiting/pending state and poll every 5 seconds to auto-refresh until payment is confirmed.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/hooks/useAdminAuth.ts"
+          "frontend/src/pages/ReceiptPage.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/hooks/useAdminAuth.ts"
+          "frontend/src/pages/ReceiptPage.tsx"
+        ]
+      },
+      {
+        "id": "REQ-5",
+        "summary": "Style ReceiptPage with a clean, white, print-optimized design: center-aligned header with the business name in bold, a large green 'SUCCESS' text/badge at the top, clearly separated sections for customer and payment details in a card layout, and a receipt number displayed prominently at the bottom. Use the existing navy/saffron color palette for branding accents. Apply print-specific CSS (@media print) to hide navigation, buttons, and non-receipt content when printing.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/ReceiptPage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/ReceiptPage.tsx"
+        ]
+      },
+      {
+        "id": "REQ-6",
+        "summary": "Add a 'Print Receipt' button and a 'Download Slip' button to ReceiptPage. The Print button triggers window.print(). The Download Slip button uses the browser's print-to-PDF flow (or a client-side HTML-to-PDF library such as html2canvas + jsPDF) to generate and download a PDF of the receipt named 'VOC-Receipt-{receiptId}.pdf'.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/ReceiptPage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/ReceiptPage.tsx"
+        ]
+      },
+      {
+        "id": "REQ-7",
+        "summary": "Add a mobile number search feature to ReceiptPage (accessible via a public route). Render a search input at the top of the page that accepts a 10-digit mobile number. On search, fetch the matching customer record and display the receipt if paymentStatus='success', or show a 'Payment pending' message if not yet paid.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/ReceiptPage.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/ReceiptPage.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ]
+      },
+      {
+        "id": "REQ-8",
+        "summary": "After the customer completes the payment step in PaymentPage.tsx (the success step), automatically redirect the customer to the ReceiptPage for their submission, passing the customerId as a route/query parameter.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/PaymentPage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/PaymentPage.tsx"
+        ]
+      },
+      {
+        "id": "REQ-9",
+        "summary": "Register the ReceiptPage route in App.tsx so it is accessible at a path such as '/receipt' (with optional query params for customerId or mobile number) without requiring admin authentication.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/App.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/App.tsx"
         ]
       }
     ]
   },
   "changedFiles": [
     "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
     "frontend/src/App.tsx",
-    "frontend/src/components/AdminLoginModal.tsx",
-    "frontend/src/hooks/useAdminAuth.ts",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
     "frontend/src/hooks/useQueries.ts",
     "frontend/src/pages/AdminPage.tsx",
-    "frontend/src/pages/DashboardPage.tsx",
+    "frontend/src/pages/PaymentPage.tsx",
+    "frontend/src/pages/ReceiptPage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",
